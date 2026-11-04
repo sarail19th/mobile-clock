@@ -51,8 +51,10 @@ object WidgetFonts {
 
     private fun variable(res: Int, weight: Int) = FontFamily(
         Font(
-            res, FontWeight(weight), FontStyle.Normal,
-            FontVariation.Settings(FontWeight(weight), FontStyle.Normal, FontVariation.weight(weight)),
+            resId = res,
+            weight = FontWeight(weight),
+            style = FontStyle.Normal,
+            variationSettings = FontVariation.Settings(FontWeight(weight), FontStyle.Normal, FontVariation.weight(weight)),
         ),
     )
 
