@@ -23,6 +23,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,6 +34,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -131,83 +136,96 @@ fun SettingsScreen() {
             }
         }
 
-        // ------------------------------------------------------------ time zone
-        SectionTitle("Time zone")
-        LabeledRow("Follow phone time zone") {
-            Switch(checked = settings.followPhoneZone, onCheckedChange = { save(settings.copy(followPhoneZone = it)) })
+        SettingsCard("Time zone") {
+            LabeledRow("Follow phone time zone") {
+                Switch(checked = settings.followPhoneZone, onCheckedChange = { save(settings.copy(followPhoneZone = it)) })
+            }
+            Hint(
+                if (settings.followPhoneZone) "Alarms and the clock follow whatever zone the phone is set to."
+                else "Alarms and the clock stay on ${Fmt.cityName(settings.homeZoneId)} time, even if the phone changes zone while you travel.",
+            )
+            LabeledRow("Show seconds in the app's Clock tab") {
+                Switch(checked = settings.showSecondsInApp, onCheckedChange = { save(settings.copy(showSecondsInApp = it)) })
+            }
+            Hint("The home-screen widget never shows seconds.")
         }
-        Hint(
-            if (settings.followPhoneZone) "Alarms and the clock follow whatever zone the phone is set to."
-            else "Alarms and the clock stay on ${Fmt.cityName(settings.homeZoneId)} time, even if the phone changes zone while you travel.",
-        )
-        LabeledRow("Show seconds in the app's Clock tab") {
-            Switch(checked = settings.showSecondsInApp, onCheckedChange = { save(settings.copy(showSecondsInApp = it)) })
-        }
-        Hint("The home-screen widget never shows seconds.")
 
-        // ------------------------------------------------------------ alarm behaviour
-        SectionTitle("Alarm behaviour")
-        Stepper("Default snooze for new alarms", settings.defaultSnoozeMinutes, "min", 1, 60) {
-            save(settings.copy(defaultSnoozeMinutes = it))
+        SettingsCard("Alarm behaviour") {
+            Stepper("Default snooze for new alarms", settings.defaultSnoozeMinutes, "min", 1, 60) {
+                save(settings.copy(defaultSnoozeMinutes = it))
+            }
+            Stepper("Stop ringing automatically after", settings.autoStopMinutes, "min", 1, 60) {
+                save(settings.copy(autoStopMinutes = it))
+            }
+            LabeledRow("Notify when an alarm is skipped") {
+                Switch(checked = settings.notifyOnSkip, onCheckedChange = { save(settings.copy(notifyOnSkip = it)) })
+            }
+            OutlinedButton(onClick = { RingService.start(ctx, RingService.KIND_ALARM, -1) }, modifier = Modifier.padding(top = 4.dp)) {
+                Text("Test ringing now")
+            }
+            Hint("Rings with the alarm volume, so check that volume too. Dismiss it from the ring screen.")
         }
-        Stepper("Stop ringing automatically after", settings.autoStopMinutes, "min", 1, 60) {
-            save(settings.copy(autoStopMinutes = it))
-        }
-        LabeledRow("Notify when an alarm is skipped") {
-            Switch(checked = settings.notifyOnSkip, onCheckedChange = { save(settings.copy(notifyOnSkip = it)) })
-        }
-        OutlinedButton(onClick = { RingService.start(ctx, RingService.KIND_ALARM, -1) }, modifier = Modifier.padding(top = 4.dp)) {
-            Text("Test ringing now")
-        }
-        Hint("Rings with the alarm volume, so check that volume too. Dismiss it from the ring screen.")
 
-        // ------------------------------------------------------------ holidays
-        SectionTitle("Thai public holidays")
-        HolidaySection(settings, refresh, onSave = ::save, onGrant = { permLauncher.launch(Manifest.permission.READ_CALENDAR) })
-
-        // ------------------------------------------------------------ permission health
-        SectionTitle("Permission health")
-        // Recomputed whenever `refresh` changes, i.e. after returning from a system settings page.
-        val items = remember(refresh) { healthItems(ctx, onRequest = { permLauncher.launch(it) }) }
-        items.forEachIndexed { i, h ->
-            HealthRow(h)
-            if (i < items.lastIndex) HorizontalDivider()
+        SettingsCard("Thai public holidays") {
+            HolidaySection(settings, refresh, onSave = ::save, onGrant = { permLauncher.launch(Manifest.permission.READ_CALENDAR) })
         }
-        Card(Modifier.fillMaxWidth().padding(top = 12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Samsung / One UI tips", style = MaterialTheme.typography.titleSmall)
-                Hint("• Settings > Apps > Clock > Battery > Unrestricted, and remove the app from \"Sleeping apps\" / \"Deep sleeping apps\".")
-                Hint("• Never use Force stop on this app: Android cancels every alarm until the app is opened again.")
-                Hint("• Do Not Disturb and Modes/Routines can silence alarms. Test with DND on before relying on it.")
-                Hint("• Before trusting a real wake-up, test with the screen off for 15+ minutes and after a reboot.")
+
+        SettingsCard("Permission health") {
+            // Recomputed whenever `refresh` changes, i.e. after returning from a system settings page.
+            val items = remember(refresh) { healthItems(ctx, onRequest = { permLauncher.launch(it) }) }
+            items.forEachIndexed { i, h ->
+                HealthRow(h)
+                if (i < items.lastIndex) HorizontalDivider()
+            }
+            Card(Modifier.fillMaxWidth().padding(top = 12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Samsung / One UI tips", style = MaterialTheme.typography.titleSmall)
+                    Hint("• Settings > Apps > Clock > Battery > Unrestricted, and remove the app from \"Sleeping apps\" / \"Deep sleeping apps\".")
+                    Hint("• Never use Force stop on this app: Android cancels every alarm until the app is opened again.")
+                    Hint("• Do Not Disturb and Modes/Routines can silence alarms. Test with DND on before relying on it.")
+                    Hint("• Before trusting a real wake-up, test with the screen off for 15+ minutes and after a reboot.")
+                }
             }
         }
 
-        // ------------------------------------------------------------ widget
-        SectionTitle("Widget")
-        Hint("Add \"Clock (no seconds)\" from your launcher's widget picker. Each widget has its own look; long-press a placed widget and choose Settings/Reconfigure to change it. Use \"Save as default\" in the editor to reuse a look.")
-        val awm = remember { AppWidgetManager.getInstance(ctx) }
-        if (awm.isRequestPinAppWidgetSupported) {
-            Button(onClick = { awm.requestPinAppWidget(ComponentName(ctx, ClockWidgetProvider::class.java), null, null) }, modifier = Modifier.padding(top = 4.dp)) {
-                Text("Add widget to home screen")
+        SettingsCard("Widget") {
+            Hint("Add \"Clock (no seconds)\" from your launcher's widget picker. Each widget has its own look; long-press a placed widget and choose Settings/Reconfigure to change it. Use \"Save as default\" in the editor to reuse a look.")
+            val awm = remember { AppWidgetManager.getInstance(ctx) }
+            if (awm.isRequestPinAppWidgetSupported) {
+                Button(onClick = { awm.requestPinAppWidget(ComponentName(ctx, ClockWidgetProvider::class.java), null, null) }, modifier = Modifier.padding(top = 4.dp)) {
+                    Text("Add widget to home screen")
+                }
             }
         }
 
-        // ------------------------------------------------------------ backup
-        SectionTitle("Backup")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { exportLauncher.launch("personal-clock-backup.json") }) { Text("Export to file") }
-            OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) { Text("Restore from file") }
+        SettingsCard("Backup") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { exportLauncher.launch("personal-clock-backup.json") }) { Text("Export to file") }
+                OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) { Text("Restore from file") }
+            }
+            Hint("Saves alarms, world clocks, settings and the default widget look as a JSON file you choose where to keep.")
         }
-        Hint("Saves alarms, world clocks, settings and the default widget look as a JSON file you choose where to keep.")
 
-        // ------------------------------------------------------------ about
-        SectionTitle("About")
-        @Suppress("DEPRECATION")
-        val version = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
-        Hint("Version $version · fully offline: this app has no network permission, account or analytics.")
-        Hint("Widget fonts: DM Sans, Nunito, JetBrains Mono, Playfair Display, Barlow Condensed and Poppins, all under the SIL Open Font License 1.1 (see /licenses in the source).")
+        SettingsCard("About") {
+            @Suppress("DEPRECATION")
+            val version = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
+            Hint("Version $version · fully offline: this app has no network permission, account or analytics.")
+            Hint("Widget fonts: DM Sans, Nunito, JetBrains Mono, Playfair Display, Barlow Condensed and Poppins, all under the SIL Open Font License 1.1 (see /licenses in the source).")
+        }
         Column(Modifier.padding(bottom = 24.dp)) {}
+    }
+}
+
+@Composable
+private fun SettingsCard(title: String, content: @Composable () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().padding(top = 12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Column(Modifier.padding(top = 4.dp)) { content() }
+        }
     }
 }
 
@@ -284,12 +302,12 @@ private fun HolidaySection(settings: AppSettings, refresh: Int, onSave: (AppSett
 @Composable
 private fun HealthRow(h: Health) {
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        val color = when {
-            h.ok -> Color(0xFF2E9E5B)
-            h.optional -> Color(0xFFE0A100)
-            else -> Color(0xFFD64545)
+        val (icon, color) = when {
+            h.ok -> Icons.Default.Check to Color(0xFF2E9E5B)
+            h.optional -> Icons.Default.Warning to Color(0xFFE0A100)
+            else -> Icons.Default.Close to Color(0xFFD64545)
         }
-        Text(if (h.ok) "●" else "●", color = color, modifier = Modifier.padding(end = 10.dp))
+        Icon(icon, contentDescription = if (h.ok) "OK" else if (h.optional) "Optional" else "Needs attention", tint = color, modifier = Modifier.padding(end = 12.dp))
         Column(Modifier.weight(1f)) {
             Text(h.title + if (h.optional) " (optional)" else "", style = MaterialTheme.typography.bodyLarge)
             Hint(h.detail)

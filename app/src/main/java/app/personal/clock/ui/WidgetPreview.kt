@@ -49,24 +49,28 @@ import java.util.Locale
 object WidgetFonts {
     val names = listOf("Sans", "Rounded", "Mono", "Serif", "Condensed", "Thin")
 
+    // NOTE: FontVariation.Settings(weight, style) already adds the 'wght' axis itself; adding
+    // FontVariation.weight() again throws "'wght' must be unique" (this crashed the widget settings screen).
     private fun variable(res: Int, weight: Int) = FontFamily(
         Font(
             resId = res,
             weight = FontWeight(weight),
             style = FontStyle.Normal,
-            variationSettings = FontVariation.Settings(FontWeight(weight), FontStyle.Normal, FontVariation.weight(weight)),
+            variationSettings = FontVariation.Settings(FontWeight(weight), FontStyle.Normal),
         ),
     )
 
     // Same pinned weights as the 'fontVariationSettings' in the generated widget layouts.
     private val families: List<FontFamily> by lazy {
+        // A font problem must never take the settings screen down: fall back to the system font.
+        fun safe(build: () -> FontFamily) = runCatching(build).getOrDefault(FontFamily.Default)
         listOf(
-            variable(R.font.dm_sans, 500),
-            variable(R.font.nunito, 600),
-            variable(R.font.jetbrains_mono, 500),
-            variable(R.font.playfair_display, 500),
-            FontFamily(Font(R.font.barlow_condensed)),
-            FontFamily(Font(R.font.poppins_thin)),
+            safe { variable(R.font.dm_sans, 500) },
+            safe { variable(R.font.nunito, 600) },
+            safe { variable(R.font.jetbrains_mono, 500) },
+            safe { variable(R.font.playfair_display, 500) },
+            safe { FontFamily(Font(R.font.barlow_condensed)) },
+            safe { FontFamily(Font(R.font.poppins_thin)) },
         )
     }
 

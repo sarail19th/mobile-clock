@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -26,7 +27,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import app.personal.clock.R
 import app.personal.clock.Tabs
 import app.personal.clock.alarm.AlarmScheduler
 import app.personal.clock.alarm.Notifications
@@ -66,20 +70,21 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private data class TabItem(val label: String, val glyph: String)
+private data class TabItem(val label: String, val icon: Int)
 
 private val TAB_ITEMS = listOf(
-    TabItem("Clock", "🕐"),
-    TabItem("Alarm", "⏰"),
-    TabItem("Timer", "⏳"),
-    TabItem("Stopwatch", "⏱️"),
-    TabItem("World", "🌍"),
-    TabItem("Settings", "⚙️"),
+    TabItem("Clock", R.drawable.ic_nav_clock),
+    TabItem("Alarm", R.drawable.ic_nav_alarm),
+    TabItem("Timer", R.drawable.ic_nav_timer),
+    TabItem("Stopwatch", R.drawable.ic_nav_stopwatch),
+    TabItem("World", R.drawable.ic_nav_world),
+    TabItem("Settings", R.drawable.ic_nav_settings),
 )
 
 @Composable
 fun MainScreen(tab: Int, onTab: (Int) -> Unit) {
     val ctx = LocalContext.current
+    val labelSize = with(LocalDensity.current) { 11.dp.toSp() }
 
     // Ask for notification permission once, at first launch (needed for timers and the ring notification).
     val askNotif = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -99,8 +104,9 @@ fun MainScreen(tab: Int, onTab: (Int) -> Unit) {
                     NavigationBarItem(
                         selected = tab == i,
                         onClick = { onTab(i) },
-                        icon = { Text(item.glyph, fontSize = 20.sp) },
-                        label = { Text(item.label, fontSize = 10.sp, maxLines = 1) },
+                        icon = { Icon(painterResource(item.icon), contentDescription = item.label) },
+                        // Fixed size (not scaled by the system font size) so six labels always fit on one line.
+                        label = { Text(item.label, fontSize = labelSize, maxLines = 1, softWrap = false) },
                         alwaysShowLabel = true,
                     )
                 }
