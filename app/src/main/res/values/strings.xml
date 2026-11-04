@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Clock</string>
+    <string name="widget_name">Clock (no seconds)</string>
+    <string name="widget_description">Digital clock without seconds. Fully customizable.</string>
+</resources>
