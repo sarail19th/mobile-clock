@@ -108,6 +108,8 @@ data class WidgetConfig(
     val leadingZero: Boolean = true,
     val showDate: Boolean = true,
     val dateFormat: Int = 0,
+    /** true = date line above the time, false = below. */
+    val dateAbove: Boolean = false,
     val showNextAlarm: Boolean = true,
     val showWorld: Boolean = false,
     val worldZone: String = "",
@@ -122,7 +124,7 @@ data class WidgetConfig(
         .put("cornerStep", cornerStep).put("paddingDp", paddingDp)
         .put("textColor", textColor).put("dateColor", dateColor)
         .put("use24h", use24h).put("showAmPm", showAmPm).put("leadingZero", leadingZero)
-        .put("showDate", showDate).put("dateFormat", dateFormat)
+        .put("showDate", showDate).put("dateFormat", dateFormat).put("dateAbove", dateAbove)
         .put("showNextAlarm", showNextAlarm).put("showWorld", showWorld).put("worldZone", worldZone)
         .put("zoneMode", zoneMode).put("shadow", shadow).put("tapAction", tapAction)
 
@@ -166,6 +168,7 @@ data class WidgetConfig(
                 leadingZero = o.optBoolean("leadingZero", d.leadingZero),
                 showDate = o.optBoolean("showDate", d.showDate),
                 dateFormat = o.optInt("dateFormat", d.dateFormat).coerceIn(0, DATE_FORMATS.size - 1),
+                dateAbove = o.optBoolean("dateAbove", d.dateAbove),
                 showNextAlarm = o.optBoolean("showNextAlarm", d.showNextAlarm),
                 showWorld = o.optBoolean("showWorld", d.showWorld),
                 worldZone = o.optString("worldZone", d.worldZone),

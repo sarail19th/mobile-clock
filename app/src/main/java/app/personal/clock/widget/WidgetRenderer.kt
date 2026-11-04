@@ -118,15 +118,18 @@ object WidgetRenderer {
             rv.setTextColor(R.id.w_ampm, cfg.textColor)
         }
 
-        // ---- date
-        rv.setViewVisibility(R.id.w_date, if (showDate) View.VISIBLE else View.GONE)
+        // ---- date (one of two identical views: above or below the time)
+        val dateId = if (cfg.dateAbove) R.id.w_date_top else R.id.w_date
+        val otherDateId = if (cfg.dateAbove) R.id.w_date else R.id.w_date_top
+        rv.setViewVisibility(otherDateId, View.GONE)
+        rv.setViewVisibility(dateId, if (showDate) View.VISIBLE else View.GONE)
         if (showDate) {
             val fmt = WidgetConfig.DATE_FORMATS[cfg.dateFormat.coerceIn(0, WidgetConfig.DATE_FORMATS.size - 1)]
-            rv.setCharSequence(R.id.w_date, "setFormat12Hour", fmt)
-            rv.setCharSequence(R.id.w_date, "setFormat24Hour", fmt)
-            rv.setString(R.id.w_date, "setTimeZone", tz)
-            rv.setTextViewTextSize(R.id.w_date, TypedValue.COMPLEX_UNIT_SP, subSize)
-            rv.setTextColor(R.id.w_date, cfg.dateColor)
+            rv.setCharSequence(dateId, "setFormat12Hour", fmt)
+            rv.setCharSequence(dateId, "setFormat24Hour", fmt)
+            rv.setString(dateId, "setTimeZone", tz)
+            rv.setTextViewTextSize(dateId, TypedValue.COMPLEX_UNIT_SP, subSize)
+            rv.setTextColor(dateId, cfg.dateColor)
         }
 
         // ---- next alarm
@@ -165,6 +168,7 @@ object WidgetRenderer {
         rv.setInt(R.id.w_content, "setGravity", vg or hg)
         rv.setInt(R.id.w_time_row, "setGravity", hg)
         rv.setInt(R.id.w_date, "setGravity", hg)
+        rv.setInt(R.id.w_date_top, "setGravity", hg)
         rv.setInt(R.id.w_alarm, "setGravity", hg)
         rv.setInt(R.id.w_world_row, "setGravity", hg)
 

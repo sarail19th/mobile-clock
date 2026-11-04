@@ -53,6 +53,20 @@ LAYOUT = """<?xml version="1.0" encoding="utf-8"?>
         android:orientation="vertical"
         android:padding="12dp">
 
+        <TextClock
+            android:id="@+id/w_date_top"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="{font}"{extra}{shadow}
+            android:format12Hour="EEE d MMM"
+            android:format24Hour="EEE d MMM"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="#FFD0D4DC"
+            android:textSize="18sp"
+            android:visibility="gone" />
+
         <LinearLayout
             android:id="@+id/w_time_row"
             android:layout_width="match_parent"

@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -20,7 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -83,6 +83,8 @@ object WidgetFonts {
  */
 @Composable
 fun WidgetPreview(cfg: WidgetConfig, widthDp: Int, heightDp: Int, modifier: Modifier = Modifier) {
+    // Drawn at the widget's real dp size (so fitting is exact) then scaled down to keep the controls on screen.
+    val scale = (150f / heightDp).coerceIn(0.4f, 1f)
     val ctx = LocalContext.current
     val store = remember { Store.get(ctx) }
     val settings = remember { store.settings() }
@@ -139,11 +141,11 @@ fun WidgetPreview(cfg: WidgetConfig, widthDp: Int, heightDp: Int, modifier: Modi
 
     // A busy "wallpaper" behind the widget so transparency and blur-less frosting are visible.
     Box(
-        modifier.fillMaxWidth().height((heightDp + 40).dp).clip(RoundedCornerShape(16.dp))
+        modifier.fillMaxWidth().height(((heightDp + 24) * scale).dp).clip(RoundedCornerShape(16.dp))
             .background(Brush.linearGradient(listOf(Color(0xFF355C7D), Color(0xFF6C5B7B), Color(0xFFC06C84), Color(0xFFF8B195)))),
         contentAlignment = Alignment.Center,
     ) {
-        var inner = Modifier.size(widthDp.dp, heightDp.dp).clip(shape)
+        var inner = Modifier.requiredSize(widthDp.dp, heightDp.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(shape)
         if (cfg.bgMode != WidgetConfig.BG_TRANSPARENT) {
             inner = inner.background(Color(cfg.bgColor).copy(alpha = cfg.bgOpacity / 100f))
         }
@@ -152,12 +154,13 @@ fun WidgetPreview(cfg: WidgetConfig, widthDp: Int, heightDp: Int, modifier: Modi
         }
         Box(inner.padding(cfg.paddingDp.dp), contentAlignment = box) {
             Column(horizontalAlignment = hAlign) {
+                if (fit.showDate && cfg.dateAbove) Text(date, style = style(fit.subSp, dateColor), maxLines = 1, textAlign = textAlign)
                 Text(
                     if (showAmPm) "$time $ampm" else time,
                     style = style(fit.sizeSp, textColor),
                     maxLines = 1, softWrap = false, textAlign = textAlign,
                 )
-                if (fit.showDate) Text(date, style = style(fit.subSp, dateColor), maxLines = 1, textAlign = textAlign)
+                if (fit.showDate && !cfg.dateAbove) Text(date, style = style(fit.subSp, dateColor), maxLines = 1, textAlign = textAlign)
                 if (fit.showAlarm) Text(nextAlarm, style = style(fit.subSp * 0.9f, dateColor), maxLines = 1, textAlign = textAlign)
                 if (fit.showWorld) Text(worldLine, style = style(fit.subSp * 0.9f, dateColor), maxLines = 1, textAlign = textAlign)
             }
