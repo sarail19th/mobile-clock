@@ -24,9 +24,11 @@ android {
         if (releaseKeystorePath != null) {
             create("release") {
                 storeFile = file(releaseKeystorePath)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
+                val storePass = System.getenv("KEYSTORE_PASSWORD")
+                storePassword = storePass
+                // Only KEYSTORE_PASSWORD is required: alias defaults to "clock" and the key password to the store password.
+                keyAlias = System.getenv("KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: "clock"
+                keyPassword = System.getenv("KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: storePass
             }
         }
     }

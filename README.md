@@ -18,7 +18,7 @@ Package: `app.personal.clock` · minSdk 31 · target/compile SDK 35 · Kotlin + 
 3. Open the app and go to **Settings → Permission health**. Fix every red row (exact alarms, notifications, full-screen alarm, battery *Unrestricted*). Calendar access is optional.
 4. Long-press the home screen → Widgets → **Clock (no seconds)**.
 
-New builds install **over** the old one without losing alarms, as long as they are signed with the same key (see below).
+New builds install **over** the old one without losing alarms, as long as they are signed with the same key (see *Signing key* below; until `KEYSTORE_PASSWORD` is set, every build uses a different throw-away key and cannot update).
 
 ### Seed alarms (created on first launch, all editable)
 
@@ -30,19 +30,19 @@ New builds install **over** the old one without losing alarms, as long as they a
 
 Alarms fire on **Asia/Bangkok** time even if the phone changes zone (Settings → "Follow phone time zone", off by default).
 
-## One-time setup: signing key (do this before you rely on updates)
+## Signing key (why updates need it)
 
-Until the four secrets exist, CI still builds an installable APK but signs it with the **debug key** (the file is named `…-debugkey.apk`). Switching later to the real key means uninstalling first, which deletes your alarms. So set the secrets up now:
+Android only installs an APK over an existing app if both are signed with the **same key**. Without a configured key, CI signs with a throw-away debug key that is different on every build, so each build must be installed by uninstalling the previous one (which deletes your alarms).
 
-```bash
-./scripts/make-keystore.sh          # run on your own machine; creates personal-clock-release.jks
-```
+The repo contains `signing/clock-release.p12`, a permanent key protected by a long random password. **The password is not in the repo**: add it once as a GitHub secret:
 
-The script prints the values. In GitHub → *Settings → Secrets and variables → Actions* add:
+*Repo → Settings → Secrets and variables → Actions → New repository secret* → name `KEYSTORE_PASSWORD`, value = the password you were given.
 
-`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
+From then on CI signs every build with that key (the log prints the certificate SHA-256 so you can compare builds) and updates install over the old version with data intact.
 
-**Back the `.jks` file up somewhere safe** (password manager, cloud drive). If it is lost you must uninstall the app to install a build signed with a new key. It is git-ignored; never commit it or the passwords.
+- **Back up the password** (password manager). Without it the committed file cannot be used and you would have to uninstall to switch keys.
+- Alias is `clock`; the key password equals the store password. `KEY_ALIAS` / `KEY_PASSWORD` secrets are optional overrides.
+- Prefer to keep the key out of the repo entirely? Run `./scripts/make-keystore.sh` on a computer and add `KEYSTORE_BASE64` + `KEYSTORE_PASSWORD` (+ optional `KEY_ALIAS`, `KEY_PASSWORD`) as secrets instead; that takes priority over the file in `signing/`, and you can then delete `signing/`. Switching keys requires one uninstall.
 
 ## Builds (GitHub Actions)
 
