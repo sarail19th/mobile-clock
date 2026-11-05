@@ -212,8 +212,12 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         SettingsCard("Backup") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { exportLauncher.launch("personal-clock-backup.json") }) { Text("Export to file") }
-                OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) { Text("Restore from file") }
+                OutlinedButton(onClick = { exportLauncher.launch("personal-clock-backup.json") }, modifier = Modifier.weight(1f)) {
+                    Text("Export", maxLines = 1)
+                }
+                OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.weight(1f)) {
+                    Text("Restore", maxLines = 1)
+                }
             }
             Hint("Saves alarms, world clocks, settings and the default widget look as a JSON file you choose where to keep.")
         }
