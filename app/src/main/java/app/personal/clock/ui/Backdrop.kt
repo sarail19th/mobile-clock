@@ -60,9 +60,10 @@ object BackdropStore {
     private const val PREFS = "ui"
     private const val KEY = "preview_bg"
     private const val FILE = "preview_bg.jpg"
+    private const val DEFAULT = "color:FFE5DECC" // the owner's wallpaper colour; one tap on the sample gradient changes it
 
     fun load(ctx: Context): Backdrop {
-        val v = ctx.getSharedPreferences(PREFS, 0).getString(KEY, "gradient") ?: "gradient"
+        val v = ctx.getSharedPreferences(PREFS, 0).getString(KEY, DEFAULT) ?: DEFAULT
         return when {
             v == "photo" -> loadPhoto(ctx) ?: Backdrop.Gradient
             v.startsWith("color:") -> runCatching { Backdrop.Solid(v.removePrefix("color:").toLong(16).toInt()) }.getOrDefault(Backdrop.Gradient)
@@ -113,8 +114,11 @@ fun BackdropBox(backdrop: Backdrop, modifier: Modifier, corner: Dp = 16.dp, cont
     }
 }
 
+/** The owner's home-screen wallpaper colour, sampled from a screenshot of their phone (#E5DECC, a warm cream). */
+private const val MY_WALLPAPER = 0xFFE5DECC
+
 private val BACKDROP_COLOURS = listOf(
-    "Cream" to 0xFFE6DFC8,
+    "My wallpaper" to MY_WALLPAPER,
     "Sand" to 0xFFD9C79A,
     "White" to 0xFFFFFFFF,
     "Grey" to 0xFFB8BCC4,
@@ -169,7 +173,7 @@ fun BackdropDialog(onChanged: (Backdrop) -> Unit, onDismiss: () -> Unit) {
     )
     if (custom) {
         ColorPickerDialog(
-            initial = 0xFFE6DFC8.toInt(),
+            initial = MY_WALLPAPER.toInt(),
             onDismiss = { custom = false },
             onPick = { argb -> custom = false; BackdropStore.saveSolid(ctx, argb); onChanged(Backdrop.Solid(argb)); onDismiss() },
         )
