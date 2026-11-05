@@ -64,7 +64,7 @@ holiday calendar, Thailand also has a built-in list, plus custom skip days.
 Alarms (seeds Mon 05:30 / Tue-Fri 07:30 / Mon-Fri 16:30 in group "Work", groups with one switch and collapsible headers, snooze, auto-stop, system ringtone, skip public holidays and/or custom days),
 timers (many, countdown notification), stopwatch, world clock (247 built-in cities + country search, day/night strip), universal holidays (zone→country, calendar checklist, built-in Thai list, test tool),
 home time-zone picker, permission health screen, Backup/Restore, widget (9 fonts, 8 templates, per-line size/colour, colour picker, backgrounds, soft/normal/strong shadow incl. a Huawei-Health-matched preset, layout-aware editor, preview backdrop).
-Owner-confirmed working on their phone: in-place updates, widget fonts via picture mode, analog+digital template, group switch, the redesigned screens. Not yet confirmed by the owner: the latest items
+Owner-confirmed working on their phone (from their replies/screenshots): in-place updates, widget fonts via picture mode, the analog+digital template, the redesigned tab screens, alarm groups displaying. Not explicitly confirmed: the group on/off switch and the collapse behaviour. Not yet confirmed by the owner: the latest items
 (universal holiday UI, colour grid + backdrop chooser, Huawei-like shadow preset) — ask for feedback.
 
 Acceptance checklist from the original spec still open on a real device: alarm rings with screen off / after reboot / in DND, 15-minute screen-off test, timer and stopwatch with screen off,
