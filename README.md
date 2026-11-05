@@ -11,6 +11,19 @@ clock widget that started showing seconds.
 
 Package: `app.personal.clock` · minSdk 31 · target/compile SDK 35 · Kotlin + Jetpack Compose (Material 3) for the app, XML RemoteViews for the widget.
 
+## Screenshots
+
+<!-- Uncomment once the files exist in docs/screenshots/ (see docs/screenshots/README.md)
+<p align="center">
+  <img src="docs/screenshots/widget-home.png" width="22%" alt="Home screen widget">
+  <img src="docs/screenshots/widget-editor.png" width="22%" alt="Widget editor with live preview">
+  <img src="docs/screenshots/alarms.png" width="22%" alt="Alarms with Thai-holiday skip">
+  <img src="docs/screenshots/world.png" width="22%" alt="World clock">
+</p>
+-->
+
+_Screenshots coming soon; the capture checklist is in [`docs/screenshots/`](docs/screenshots/README.md)._
+
 ## Install on the phone
 
 1. Open the repo's **Releases** page on the phone and download the APK from **"Latest build"** (or from a `v*` release).
@@ -99,3 +112,8 @@ Only the *Classic* layout with the *System* font is a live `TextClock`. Every ot
 ./gradlew testDebugUnitTest      # pure-Kotlin tests (scheduling maths, formatting, widget fitting)
 ./gradlew assembleRelease        # needs the Android SDK; CI does this for you
 ```
+
+## License
+
+[MIT](LICENSE) for the app's own code. Bundled fonts (SIL OFL 1.1) and libraries (Apache 2.0) keep their own licenses;
+see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [`licenses/`](licenses/).
