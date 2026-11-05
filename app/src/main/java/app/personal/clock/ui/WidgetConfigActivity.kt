@@ -29,7 +29,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,9 +44,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import app.personal.clock.widget.LayoutCaps
@@ -151,7 +154,9 @@ private fun ConfigScreen(
 ) {
     val ctx = LocalContext.current
     var cfg by remember { mutableStateOf(initial) }
-    var note by remember { mutableStateOf<String?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var confirmDefault by remember { mutableStateOf(false) }
+    var openLine by remember { mutableIntStateOf(-1) } // which line card is open (-1 = all closed)
     var section by remember { mutableIntStateOf(if (startOnTemplates) 0 else 1) }
     var backdrop by remember { mutableStateOf(BackdropStore.load(ctx)) }
     var showBackdrop by remember { mutableStateOf(false) }
@@ -163,6 +168,15 @@ private fun ConfigScreen(
     val caps = LayoutCaps.of(cfg.layout)
 
     if (showBackdrop) BackdropDialog(onChanged = { backdrop = it }, onDismiss = { showBackdrop = false })
+    if (confirmDefault) {
+        AlertDialog(
+            onDismissRequest = { confirmDefault = false },
+            title = { Text("Use this look for new widgets?") },
+            text = { Text("Every widget you add from now on will start with this look. Widgets already on your home screen and the Templates are not changed.") },
+            confirmButton = { TextButton(onClick = { onSaveDefault(cfg); confirmDefault = false }) { Text("Use for new widgets") } },
+            dismissButton = { TextButton(onClick = { confirmDefault = false }) { Text("Cancel") } },
+        )
+    }
 
     Scaffold(
         bottomBar = {
@@ -180,17 +194,25 @@ private fun ConfigScreen(
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                WidgetPreview(cfg, widthDp, heightDp, backdrop, onBackdropClick = { showBackdrop = true })
+                WidgetPreview(cfg, widthDp, heightDp, backdrop)
             }
-            // Section switcher: keeps every control within one short scroll.
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SECTIONS.forEachIndexed { i, n ->
-                    FilterChip(selected = section == i, onClick = { section = i }, label = { Text(n, maxLines = 1) })
+            // Under the picture: what the preview sits on (editor only), and the menu for "new widgets" defaults.
+            Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { showBackdrop = true }, modifier = Modifier.weight(1f)) {
+                    Text("Tap to change preview background", maxLines = 1, fontSize = 13.sp)
+                }
+                Box {
+                    IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.MoreVert, contentDescription = "More") }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Use this look for new widgets") },
+                            onClick = { menuOpen = false; confirmDefault = true },
+                        )
+                    }
                 }
             }
+            // Section switcher: all sections visible at once, never scrolls sideways.
+            SectionTabs(section) { section = it }
             Column(
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -242,7 +264,7 @@ private fun ConfigScreen(
                         if (cfg.shadow) {
                             ChipRow {
                                 listOf(
-                                    Triple("Soft (Huawei-like)", 30, 2),
+                                    Triple("Soft", 30, 2),
                                     Triple("Normal", WidgetConfig.DEFAULT_SHADOW_STRENGTH, WidgetConfig.DEFAULT_SHADOW_BLUR),
                                     Triple("Strong", 90, 3),
                                 ).forEach { (name, strength, blur) ->
@@ -255,7 +277,7 @@ private fun ConfigScreen(
                             }
                             SliderRow("Shadow darkness: ${cfg.shadowStrength}%", cfg.shadowStrength.toFloat(), 0f..100f) { cfg = cfg.copy(shadowStrength = it.roundToInt()) }
                             SliderRow("Shadow softness: ${cfg.shadowBlur} dp", cfg.shadowBlur.toFloat(), 0f..20f) { cfg = cfg.copy(shadowBlur = it.roundToInt()) }
-                            Hint("\"Soft (Huawei-like)\" is a faint, tight shadow measured from a Huawei Health widget: about a third as dark as Normal and only a couple of pixels wide. Changing the shadow draws the widget as a picture.")
+                            Hint("\"Soft\" is a faint, tight shadow: about a third as dark as Normal and only a couple of pixels wide. Changing the shadow draws the widget as a picture.")
                         }
                         if (caps.accent) {
                             SectionTitle("Accent colour")
@@ -336,7 +358,7 @@ private fun ConfigScreen(
                             if (cfg.layout == WidgetConfig.LAYOUT_STACK) "Each line has its own size and colour. Tap a card to open it."
                             else "Showing only what the ${caps.name} layout uses. Lines it does not draw are greyed out.",
                         )
-                        LineCard("Time", if (caps.timeSize) "${cfg.sizeSp} sp" else "colour only", null, {}, startOpen = false) {
+                        LineCard("Time", if (caps.timeSize) "${cfg.sizeSp} sp" else "colour only", null, {}, open = openLine == 0, onToggle = { openLine = if (openLine == 0) -1 else 0 }) {
                             if (caps.timeSize) {
                                 SliderRow("Size: ${cfg.sizeSp} sp", cfg.sizeSp.toFloat(), 24f..120f) { cfg = cfg.copy(sizeSp = it.roundToInt()) }
                             }
@@ -356,7 +378,7 @@ private fun ConfigScreen(
                         }
                         LineCard(
                             "Date", "${cfg.dateSizeSp} sp", if (caps.dateSwitch) cfg.showDate else null, { cfg = cfg.copy(showDate = it) },
-                            startOpen = true, active = caps.dateLine, inactiveNote = "Not used by this layout.",
+                            open = openLine == 1, onToggle = { openLine = if (openLine == 1) -1 else 1 }, active = caps.dateLine, inactiveNote = "Not used by this layout.",
                         ) {
                             if (caps.dateNote.isNotEmpty()) Hint(caps.dateNote)
                             if (caps.datePosition) {
@@ -382,7 +404,7 @@ private fun ConfigScreen(
                         }
                         LineCard(
                             "Next alarm", "${cfg.alarmSizeSp} sp", if (caps.alarmSwitch) cfg.showNextAlarm else null, { cfg = cfg.copy(showNextAlarm = it) },
-                            startOpen = true, active = caps.alarmLine, inactiveNote = "Not shown by this layout.",
+                            open = openLine == 2, onToggle = { openLine = if (openLine == 2) -1 else 2 }, active = caps.alarmLine, inactiveNote = "Not shown by this layout.",
                         ) {
                             if (!caps.alarmSwitch) Hint("This layout always shows the next alarm.")
                             SliderRow("Size: ${cfg.alarmSizeSp} sp", cfg.alarmSizeSp.toFloat(), 10f..32f) { cfg = cfg.copy(alarmSizeSp = it.roundToInt()) }
@@ -396,7 +418,7 @@ private fun ConfigScreen(
                                 val pick = cfg.worldZone.ifBlank { worldFallback }
                                 cfg = cfg.copy(showWorld = on, worldZone = pick)
                             },
-                            startOpen = !caps.worldSwitch, active = caps.worldLine, inactiveNote = "Not shown by this layout.",
+                            open = openLine == 3, onToggle = { openLine = if (openLine == 3) -1 else 3 }, active = caps.worldLine, inactiveNote = "Not shown by this layout.",
                         ) {
                             if (worldZones.size <= 1) Hint("Add more cities in the World tab to choose from.")
                             ChipRow {
@@ -411,11 +433,6 @@ private fun ConfigScreen(
                         }
                     }
                 }
-                OutlinedButton(
-                    onClick = { onSaveDefault(cfg); note = "Saved as the default look for new widgets." },
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                ) { Text("Set Default") }
-                note?.let { Hint(it) }
                 Box(Modifier.size(16.dp))
             }
         }
@@ -429,7 +446,8 @@ private fun LineCard(
     summary: String,
     enabled: Boolean?,
     onEnabled: (Boolean) -> Unit,
-    startOpen: Boolean,
+    open: Boolean,
+    onToggle: () -> Unit,
     active: Boolean = true,
     inactiveNote: String = "",
     content: @Composable () -> Unit,
@@ -447,7 +465,6 @@ private fun LineCard(
             }
         }
     } else {
-    var open by remember { mutableStateOf(startOpen) }
     Card(
         Modifier.fillMaxWidth().padding(top = 6.dp),
         shape = RoundedCornerShape(20.dp),
@@ -455,7 +472,7 @@ private fun LineCard(
     ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
             Row(
-                Modifier.fillMaxWidth().clickable { open = !open },
+                Modifier.fillMaxWidth().clickable { onToggle() },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -474,8 +491,44 @@ private fun LineCard(
 
 @Composable
 private fun ChipRow(content: @Composable () -> Unit) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Wraps onto more lines instead of scrolling sideways.
+    FlowRow(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         content()
+    }
+}
+
+/** The five editor sections as equal-width tabs on one line (wrapping chips if the phone's font size is very large). */
+@Composable
+private fun SectionTabs(selected: Int, onSelect: (Int) -> Unit) {
+    if (LocalDensity.current.fontScale > 1.15f) {
+        FlowRow(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SECTIONS.forEachIndexed { i, n -> FilterChip(selected = selected == i, onClick = { onSelect(i) }, label = { Text(n, maxLines = 1) }) }
+        }
+    } else {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            SECTIONS.forEachIndexed { i, n ->
+                val on = selected == i
+                Box(
+                    Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
+                        .background(if (on) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer)
+                        .clickable { onSelect(i) }.padding(vertical = 9.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        n, maxLines = 1, softWrap = false, fontSize = 12.sp,
+                        fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
+                        color = if (on) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
     }
 }
 

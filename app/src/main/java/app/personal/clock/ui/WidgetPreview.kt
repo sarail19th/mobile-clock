@@ -63,17 +63,12 @@ fun WidgetPanel(cfg: WidgetConfig, widthDp: Int, heightDp: Int, scale: Float, mi
 
 /** Big preview at the top of the editor, at the widget's current size, on the chosen backdrop. */
 @Composable
-fun WidgetPreview(cfg: WidgetConfig, widthDp: Int, heightDp: Int, backdrop: Backdrop, onBackdropClick: () -> Unit, modifier: Modifier = Modifier) {
+fun WidgetPreview(cfg: WidgetConfig, widthDp: Int, heightDp: Int, backdrop: Backdrop, modifier: Modifier = Modifier) {
     val tick by rememberTicker(60_000L)
     // Drawn at real size (so fitting is exact) then scaled down to leave room for the controls.
     val scale = (150f / heightDp).coerceIn(0.4f, 1f)
     BackdropBox(backdrop, modifier.fillMaxWidth().height(((heightDp + 24) * scale).dp)) {
         WidgetPanel(cfg, widthDp, heightDp, scale, tick / 60_000L)
-        // Small, always-visible button to change what the preview sits on.
-        Box(
-            Modifier.align(Alignment.TopEnd).padding(8.dp).clip(RoundedCornerShape(14.dp))
-                .background(Color(0x99000000)).clickable(onClick = onBackdropClick).padding(horizontal = 10.dp, vertical = 5.dp),
-        ) { Text("Background", color = Color.White, fontSize = 12.sp) }
     }
 }
 
