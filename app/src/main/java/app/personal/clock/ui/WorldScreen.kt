@@ -65,6 +65,37 @@ private val REGIONS = listOf(
 fun selectableZones(): List<String> =
     ZoneId.getAvailableZoneIds().filter { id -> REGIONS.any { id.startsWith(it) } }.sorted()
 
+/** Country names for time zones, from the phone's own ICU data (so "France" finds Europe/Paris). */
+object ZoneCountries {
+    class Info(val name: String, val code: String)
+
+    private val byZone: Map<String, Info> by lazy {
+        val m = HashMap<String, Info>()
+        for (code in Locale.getISOCountries()) {
+            val name = Locale.Builder().setRegion(code).build().getDisplayCountry(Locale.ENGLISH)
+            val ids = runCatching { android.icu.util.TimeZone.getAvailableIDs(code) }.getOrNull() ?: continue
+            for (id in ids) if (!m.containsKey(id)) m[id] = Info(name.ifBlank { code }, code)
+        }
+        m
+    }
+
+    /** Common short names people actually type. */
+    private val aliases = mapOf(
+        "usa" to "us", "america" to "us", "uk" to "gb", "britain" to "gb", "england" to "gb",
+        "uae" to "ae", "emirates" to "ae", "korea" to "kr", "russia" to "ru", "holland" to "nl",
+    )
+
+    fun of(zoneId: String): Info? = byZone[zoneId]
+
+    fun matches(zoneId: String, query: String): Boolean {
+        val c = byZone[zoneId] ?: return false
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) return false
+        val alias = aliases[q]
+        return c.name.lowercase().contains(q) || c.code.lowercase() == q || (alias != null && c.code.lowercase() == alias)
+    }
+}
+
 private val NIGHT = Color(0xFF26304F)
 private val DAY = Color(0xFFF3C969)
 
@@ -119,7 +150,7 @@ fun WorldScreen(onSettings: () -> Unit) {
                                             if (dst) Pill("DST", Color(0xFFFFF1D6), Color(0xFF7A4A00), Modifier.padding(start = 6.dp))
                                         }
                                         Hint(
-                                            "${Fmt.utcOffset(zdt.offset.totalSeconds)} · $dayText" +
+                                            (ZoneCountries.of(id)?.let { it.name + " \u00B7 " } ?: "") + "${Fmt.utcOffset(zdt.offset.totalSeconds)} · $dayText" +
                                                 if (isHome) "" else " · ${Fmt.hoursDiff(zdt.offset.totalSeconds - homeNow.offset.totalSeconds)}",
                                         )
                                     }
@@ -186,6 +217,7 @@ private fun AddZoneDialog(existing: List<String>, now: Instant, onDismiss: () ->
         val q = query.trim().lowercase().replace(' ', '_')
         val list = if (q.isEmpty()) all else all.filter { id ->
             id.lowercase().contains(q) ||
+                ZoneCountries.matches(id, query) ||
                 Fmt.utcOffset(ZoneId.of(id).rules.getOffset(now).totalSeconds).lowercase().replace(" ", "") == q.replace("_", "")
         }
         list.filterNot { it in existing }.take(80)
@@ -197,14 +229,14 @@ private fun AddZoneDialog(existing: List<String>, now: Instant, onDismiss: () ->
             Column {
                 OutlinedTextField(
                     value = query, onValueChange = { query = it },
-                    label = { Text("Search city, region or UTC+9") }, singleLine = true,
+                    label = { Text("Search city, country or UTC+9") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 LazyColumn(Modifier.fillMaxWidth().height(320.dp).padding(top = 8.dp)) {
                     items(matches, key = { it }) { id ->
                         Column(Modifier.fillMaxWidth().clickable { onPick(id) }.padding(vertical = 10.dp)) {
                             Text(Fmt.cityName(id), style = MaterialTheme.typography.bodyLarge)
-                            Hint("$id · ${Fmt.utcOffset(ZoneId.of(id).rules.getOffset(now).totalSeconds)}")
+                            Hint((ZoneCountries.of(id)?.let { it.name + " \u00B7 " } ?: "") + "$id \u00B7 ${Fmt.utcOffset(ZoneId.of(id).rules.getOffset(now).totalSeconds)}")
                         }
                         HorizontalDivider()
                     }
