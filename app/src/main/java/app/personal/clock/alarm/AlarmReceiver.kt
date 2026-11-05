@@ -19,6 +19,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 if (Store.get(ctx).alarm(id) != null) RingService.start(ctx, RingService.KIND_ALARM, id)
             }
             AlarmScheduler.ACTION_SKIP_NOTICE -> onSkipNotice(ctx, intent)
+            AlarmScheduler.ACTION_WIDGET_TICK -> ClockWidgetProvider.updateAll(ctx) // also re-arms the next minute
             AlarmScheduler.ACTION_TIMER_FIRE -> {
                 val id = intent.getIntExtra(AlarmScheduler.EXTRA_ID, -1)
                 TimerController.onFired(ctx, id)

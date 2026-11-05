@@ -25,6 +25,7 @@ object AlarmScheduler {
     const val ACTION_SNOOZE_FIRE = "app.personal.clock.action.ALARM_SNOOZE_FIRE"
     const val ACTION_SKIP_NOTICE = "app.personal.clock.action.ALARM_SKIP_NOTICE"
     const val ACTION_TIMER_FIRE = "app.personal.clock.action.TIMER_FIRE"
+    const val ACTION_WIDGET_TICK = "app.personal.clock.action.WIDGET_TICK"
 
     const val EXTRA_ID = "id"
     const val EXTRA_TRIGGER_AT = "trigger_at"
@@ -35,6 +36,7 @@ object AlarmScheduler {
     private const val RC_SNOOZE = 1_000_000
     private const val RC_SKIP = 2_000_000
     private const val RC_TIMER = 3_000_000
+    private const val RC_WIDGET_TICK = 4_000_000
 
     data class NextInfo(val alarm: AlarmItem, val at: java.time.ZonedDateTime, val skipped: List<AlarmMath.Skipped>)
 
@@ -106,6 +108,8 @@ object AlarmScheduler {
         am(ctx).setAlarmClock(AlarmManager.AlarmClockInfo(at, Notifications.openApp(ctx, Tabs.ALARM)), p)
         return at
     }
+
+    fun widgetTickPendingIntent(ctx: Context): PendingIntent = pi(ctx, ACTION_WIDGET_TICK, RC_WIDGET_TICK)
 
     fun timerPendingIntent(ctx: Context, timerId: Int): PendingIntent =
         pi(ctx, ACTION_TIMER_FIRE, RC_TIMER + timerId) { putExtra(EXTRA_ID, timerId) }

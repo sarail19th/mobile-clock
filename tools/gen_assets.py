@@ -10,19 +10,10 @@ import pathlib
 
 RES = pathlib.Path("app/src/main/res")
 
-# (key, human name, android:fontFamily)
-# f0 is the phone's own font. The rest are bundled single-weight (static) TTFs from res/font: variable fonts
-# are not reliably honoured inside widgets, static ones are the standard way to ship a widget font.
+# Only the phone's own font is a live TextClock layout. Launchers ignore app-bundled fonts inside widgets, so
+# custom fonts are drawn into a bitmap (see WidgetBitmap.kt) that shows up in the w_bitmap view of these layouts.
 FONTS = [
-    ("f0", "System",    "sans-serif",              ""),
-    ("f1", "Clean",     "@font/dm_sans",           ""),
-    ("f2", "Rounded",   "@font/nunito",            ""),
-    ("f3", "Cute",      "@font/fredoka",           ""),
-    ("f4", "Soft",      "@font/quicksand",         ""),
-    ("f5", "Mono",      "@font/jetbrains_mono",    ""),
-    ("f6", "Serif",     "@font/playfair_display",  ""),
-    ("f7", "Condensed", "@font/barlow_condensed",  ""),
-    ("f8", "Thin",      "@font/poppins_thin",      ""),
+    ("f0", "System", "sans-serif", ""),
 ]
 SHADOW = ' android:shadowColor="#B3000000" android:shadowDx="0" android:shadowDy="1.5" android:shadowRadius="4"'
 
@@ -160,6 +151,14 @@ LAYOUT = """<?xml version="1.0" encoding="utf-8"?>
                 android:textSize="16sp" />
         </LinearLayout>
     </LinearLayout>
+
+    <ImageView
+        android:id="@+id/w_bitmap"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="yes"
+        android:scaleType="fitXY"
+        android:visibility="gone" />
 </FrameLayout>
 """
 

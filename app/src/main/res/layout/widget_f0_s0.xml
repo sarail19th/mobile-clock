@@ -132,4 +132,12 @@
                 android:textSize="16sp" />
         </LinearLayout>
     </LinearLayout>
+
+    <ImageView
+        android:id="@+id/w_bitmap"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="yes"
+        android:scaleType="fitXY"
+        android:visibility="gone" />
 </FrameLayout>

@@ -53,6 +53,7 @@ import app.personal.clock.core.Fmt
 import app.personal.clock.data.Store
 import app.personal.clock.data.WidgetConfig
 import app.personal.clock.widget.WidgetRenderer
+import app.personal.clock.widget.WidgetTicker
 import kotlin.math.roundToInt
 
 /** Per-widget settings. Opened when a widget is placed and again from the launcher's "reconfigure". */
@@ -73,9 +74,7 @@ class WidgetConfigActivity : ComponentActivity() {
         store.ensureSeeded()
 
         val awm = AppWidgetManager.getInstance(this)
-        val opts = awm.getAppWidgetOptions(widgetId)
-        val wDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0).takeIf { it > 0 } ?: WidgetRenderer.DEFAULT_WIDTH_DP
-        val hDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0).takeIf { it > 0 } ?: WidgetRenderer.DEFAULT_HEIGHT_DP
+        val (wDp, hDp) = WidgetRenderer.primarySizeDp(this, widgetId)
 
         val initial = if (store.hasWidgetConfig(widgetId)) {
             store.widgetConfig(widgetId)
@@ -93,6 +92,7 @@ class WidgetConfigActivity : ComponentActivity() {
                     onSave = { cfg ->
                         store.saveWidgetConfig(widgetId, cfg)
                         awm.updateAppWidget(widgetId, WidgetRenderer.build(this, widgetId))
+                        WidgetTicker.schedule(this) // starts/stops the minute refresh used by custom-font widgets
                         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
                         finish()
                     },
@@ -163,6 +163,9 @@ private fun ConfigScreen(
                             WidgetFonts.names.forEachIndexed { i, n ->
                                 FilterChip(selected = cfg.font == i, onClick = { cfg = cfg.copy(font = i) }, label = { Text(n) })
                             }
+                        }
+                        if (cfg.font != 0) {
+                            Hint("Custom fonts are drawn as a picture that is refreshed every minute while the phone is awake. \"System\" uses the phone's own live clock and is the most reliable.")
                         }
                         SliderRow("Time size: ${cfg.sizeSp} sp", cfg.sizeSp.toFloat(), 24f..120f) { cfg = cfg.copy(sizeSp = it.roundToInt()) }
                         LabeledRow("Text shadow (readability on busy wallpapers)") {
