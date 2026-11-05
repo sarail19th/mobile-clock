@@ -13,16 +13,15 @@ Package: `app.personal.clock` · minSdk 31 · target/compile SDK 35 · Kotlin + 
 
 ## Screenshots
 
-<!-- Uncomment once the files exist in docs/screenshots/ (see docs/screenshots/README.md)
 <p align="center">
-  <img src="docs/screenshots/widget-home.png" width="22%" alt="Home screen widget">
-  <img src="docs/screenshots/widget-editor.png" width="22%" alt="Widget editor with live preview">
-  <img src="docs/screenshots/alarms.png" width="22%" alt="Alarms with Thai-holiday skip">
-  <img src="docs/screenshots/world.png" width="22%" alt="World clock">
+  <img src="docs/screenshots/clock.jpg" width="18%" alt="Clock tab with the next alarm and two world clocks">
+  <img src="docs/screenshots/alarms.jpg" width="18%" alt="Alarm tab with the next alarm, the next holiday skip and alarm groups">
+  <img src="docs/screenshots/timer.jpg" width="18%" alt="Timer tab with quick start and saved timers">
+  <img src="docs/screenshots/stopwatch.jpg" width="18%" alt="Stopwatch tab">
+  <img src="docs/screenshots/world.jpg" width="18%" alt="World clock with a day and night bar per city">
 </p>
--->
 
-_Screenshots coming soon; the capture checklist is in [`docs/screenshots/`](docs/screenshots/README.md)._
+More screenshots (the widget editor and the home-screen widget) will be added; the capture checklist is in [`docs/screenshots/`](docs/screenshots/README.md).
 
 ## Install on the phone
 

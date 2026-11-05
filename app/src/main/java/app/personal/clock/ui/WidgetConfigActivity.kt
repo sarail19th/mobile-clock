@@ -525,9 +525,13 @@ private fun LineCard(
 /** A small up/down arrow used to reorder the lines; greyed out at the end of the list. */
 @Composable
 private fun MoveButton(glyph: String, description: String, enabled: Boolean, onClick: () -> Unit) {
-    IconButton(onClick = onClick, enabled = enabled) {
+    Box(
+        Modifier.size(40.dp).clip(CircleShape).clickable(enabled = enabled, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
         Text(
-            glyph, fontSize = 15.sp, modifier = Modifier.semantics { contentDescription = description },
+            glyph, fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.25f),
         )
     }
@@ -557,7 +561,7 @@ private fun SectionTabs(selected: Int, onSelect: (Int) -> Unit) {
         Row(Modifier.fillMaxWidth()) {
             SECTIONS.forEachIndexed { i, n ->
                 val on = selected == i
-                Column(Modifier.weight(1f).clickable { onSelect(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.weight(maxOf(1f, n.length / 7f)).clickable { onSelect(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         n, maxLines = 1, softWrap = false, fontSize = (12f / fontScale).sp,
                         fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
