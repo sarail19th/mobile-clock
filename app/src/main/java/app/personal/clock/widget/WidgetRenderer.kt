@@ -247,9 +247,8 @@ object WidgetRenderer {
                 if (cfg.bgMode == WidgetConfig.BG_FROSTED) {
                     // "Frosted" = tinted translucent fill + thin light edge. Real backdrop blur is not possible in a widget.
                     rv.setViewVisibility(R.id.w_border, View.VISIBLE)
+                    // Colour and opacity of the edge are baked into the outline drawable (see tools/gen_assets.py).
                     rv.setImageViewResource(R.id.w_border, BORDER[step])
-                    rv.setInt(R.id.w_border, "setColorFilter", 0xFFFFFFFF.toInt())
-                    rv.setInt(R.id.w_border, "setImageAlpha", 90)
                 } else {
                     rv.setViewVisibility(R.id.w_border, View.GONE)
                 }

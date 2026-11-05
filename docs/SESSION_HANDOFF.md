@@ -44,6 +44,7 @@ holiday calendar, Thailand also has a built-in list, plus custom skip days.
   system font. So only *Classic layout + System font* is a live `TextClock`; every other font/layout (and any tuned shadow) is drawn into a bitmap by `widget/WidgetScene.kt`,
   refreshed each minute by a **non-wakeup** exact alarm (`WidgetTicker`, receiver action `WIDGET_TICK`). The editor preview uses the same renderer. If the app is put to sleep by Samsung battery
   settings the picture can go stale (the Permission health screen tells the owner to set Battery → Unrestricted).
+- Widget panel edge (Frosted): do **not** tint the stroke-only outline drawables at runtime (`setColorFilter`/`setImageAlpha` on `w_border`): on the owner's Samsung phone that painted a ~35% white film over the whole panel (measured: dark blue panel came out (98,129,184) instead of (11,61,145)). The edge colour is baked into `widget_bd_r*.xml` by `tools/gen_assets.py`.
 - Alarms: only the *next* occurrence is scheduled (`AlarmManager.setAlarmClock`), re-armed after every fire/edit/boot/time change; ring = foreground service (mediaPlayback) on the alarm stream +
   full-screen intent. Skipped dates also get a quiet "Skipped: <name>" notice via a separate exact alarm.
 - Storage is SharedPreferences + JSON (`data/Store.kt`), chosen so receivers can read synchronously; all JSON readers have defaults, so older data keeps loading. Backup/Restore (Settings) exports it all.
