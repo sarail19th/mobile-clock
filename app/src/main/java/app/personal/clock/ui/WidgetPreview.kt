@@ -2,7 +2,6 @@
 
 package app.personal.clock.ui
 
-import android.graphics.Typeface
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,10 +27,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.personal.clock.R
 import app.personal.clock.core.Fmt
 import app.personal.clock.core.WidgetFitter
 import app.personal.clock.data.Store
@@ -41,16 +42,23 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** Android system font families: identical lookups in the widget layouts and in this preview. */
+/** Same fonts as the generated widget layouts: index 0 follows the phone's font, the rest are bundled static TTFs. */
 object WidgetFonts {
-    val names = listOf("Regular", "Light", "Thin", "Bold", "Condensed", "Serif", "Mono")
-    private val systemNames = listOf(
-        "sans-serif", "sans-serif-light", "sans-serif-thin", "sans-serif-black",
-        "sans-serif-condensed", "serif", "monospace",
-    )
+    val names = listOf("System", "Clean", "Rounded", "Cute", "Soft", "Mono", "Serif", "Condensed", "Thin")
 
     private val families: List<FontFamily> by lazy {
-        systemNames.map { n -> runCatching { FontFamily(Typeface.create(n, Typeface.NORMAL)) }.getOrDefault(FontFamily.Default) }
+        fun safe(build: () -> FontFamily) = runCatching(build).getOrDefault(FontFamily.Default)
+        listOf(
+            FontFamily.Default,
+            safe { FontFamily(Font(R.font.dm_sans)) },
+            safe { FontFamily(Font(R.font.nunito)) },
+            safe { FontFamily(Font(R.font.fredoka)) },
+            safe { FontFamily(Font(R.font.quicksand)) },
+            safe { FontFamily(Font(R.font.jetbrains_mono)) },
+            safe { FontFamily(Font(R.font.playfair_display)) },
+            safe { FontFamily(Font(R.font.barlow_condensed)) },
+            safe { FontFamily(Font(R.font.poppins_thin)) },
+        )
     }
 
     fun family(index: Int): FontFamily = families[index.coerceIn(0, families.size - 1)]

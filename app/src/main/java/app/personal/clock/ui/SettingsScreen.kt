@@ -210,7 +210,7 @@ fun SettingsScreen() {
             @Suppress("DEPRECATION")
             val version = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
             Hint("Version $version · fully offline: this app has no network permission, account or analytics.")
-            Hint("Widget fonts are Android's own system font families, so every launcher shows them the same way.")
+            Hint("Widget fonts: Clean (DM Sans), Rounded (Nunito), Cute (Fredoka), Soft (Quicksand), Mono (JetBrains Mono), Serif (Playfair Display), Condensed (Barlow Condensed), Thin (Poppins), all under the SIL Open Font License 1.1 (see /licenses in the source). \"System\" uses your phone's own font.")
         }
         Column(Modifier.padding(bottom = 24.dp)) {}
     }

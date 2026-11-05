@@ -10,17 +10,19 @@ import pathlib
 
 RES = pathlib.Path("app/src/main/res")
 
-# (key, human name, android:fontFamily, extra attributes)
-# These are Android's own font families. Bundled .ttf fonts were tried first, but Samsung's launcher ignored them
-# in RemoteViews (the widget fell back to the default font), whereas system families are always honoured.
+# (key, human name, android:fontFamily)
+# f0 is the phone's own font. The rest are bundled single-weight (static) TTFs from res/font: variable fonts
+# are not reliably honoured inside widgets, static ones are the standard way to ship a widget font.
 FONTS = [
-    ("f0", "Regular",   "sans-serif",           ""),
-    ("f1", "Light",     "sans-serif-light",     ""),
-    ("f2", "Thin",      "sans-serif-thin",      ""),
-    ("f3", "Bold",      "sans-serif-black",     ""),
-    ("f4", "Condensed", "sans-serif-condensed", ""),
-    ("f5", "Serif",     "serif",                ""),
-    ("f6", "Mono",      "monospace",            ""),
+    ("f0", "System",    "sans-serif",              ""),
+    ("f1", "Clean",     "@font/dm_sans",           ""),
+    ("f2", "Rounded",   "@font/nunito",            ""),
+    ("f3", "Cute",      "@font/fredoka",           ""),
+    ("f4", "Soft",      "@font/quicksand",         ""),
+    ("f5", "Mono",      "@font/jetbrains_mono",    ""),
+    ("f6", "Serif",     "@font/playfair_display",  ""),
+    ("f7", "Condensed", "@font/barlow_condensed",  ""),
+    ("f8", "Thin",      "@font/poppins_thin",      ""),
 ]
 SHADOW = ' android:shadowColor="#B3000000" android:shadowDx="0" android:shadowDy="1.5" android:shadowRadius="4"'
 

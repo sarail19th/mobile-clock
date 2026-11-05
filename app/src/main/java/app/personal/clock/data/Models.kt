@@ -141,7 +141,7 @@ data class WidgetConfig(
         const val TAP_ALARMS = 1
         const val TAP_NONE = 2
 
-        const val FONT_COUNT = 7
+        const val FONT_COUNT = 9
         const val MAX_CORNER_STEP = 12
         val DATE_FORMATS = listOf("EEE d MMM", "EEEE, d MMMM", "d MMM yyyy", "EEE, MMM d", "dd/MM/yyyy")
 
