@@ -11,6 +11,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import org.junit.Assert.assertFalse
 
 class CoreTest {
     private val bkk = ZoneId.of("Asia/Bangkok")
@@ -183,5 +184,106 @@ class WidgetFitTest {
         val f = fit(250, 110)
         // every line shares one scale, so the user's size ratios are preserved
         assertTrue(f.scale in 0.3f..1f)
+    }
+}
+
+
+class HolidayAndSkipTest {
+    private fun d(y: Int, m: Int, day: Int) = LocalDate.of(y, m, day)
+    private val lookup: (String) -> String? = { id ->
+        mapOf("Asia/Bangkok" to "TH", "Asia/Tokyo" to "JP", "Europe/Paris" to "FR", "UTC" to "001", "Etc/GMT+7" to null, "Mars/Base" to "ZZ")[id]
+    }
+
+    // ---- zone -> region
+    @Test fun fixedZoneUsesItsCountry() {
+        val r = HolidayRegion.resolve("", "Asia/Bangkok", lookup)
+        assertEquals("TH", r.code); assertTrue(r.fromZone)
+    }
+
+    @Test fun phoneZoneAbroadUsesTheCountryYouAreIn() {
+        assertEquals("JP", HolidayRegion.resolve("", "Asia/Tokyo", lookup).code)
+        assertEquals("FR", HolidayRegion.resolve("", "Europe/Paris", lookup).code)
+    }
+
+    @Test fun zonesWithoutACountryFallBackToNone() {
+        assertNull(HolidayRegion.resolve("", "UTC", lookup).code)       // ICU says "001" (world)
+        assertNull(HolidayRegion.resolve("", "Etc/GMT+7", lookup).code)
+        assertNull(HolidayRegion.resolve("", "Mars/Base", lookup).code) // "ZZ" = unknown
+        assertNull(HolidayRegion.resolve("", "Not/AZone") { throw IllegalStateException("boom") }.code)
+    }
+
+    @Test fun manualCountryOverridesTheZone() {
+        val r = HolidayRegion.resolve("fr", "Asia/Bangkok", lookup)
+        assertEquals("FR", r.code); assertFalse(r.fromZone)
+        assertEquals("TH", HolidayRegion.resolve("not-a-code", "Asia/Bangkok", lookup).code) // junk override ignored
+        assertEquals("JP", HolidayRegion.resolve("  ", "Asia/Tokyo", lookup).code)
+    }
+
+    // ---- the date is judged in the alarm's own zone
+    @Test fun dateIsTakenInTheAlarmZoneNotUtc() {
+        val bkk = ZoneId.of("Asia/Bangkok")
+        val instant = ZonedDateTime.of(2026, 4, 14, 5, 30, 0, 0, bkk).toInstant().toEpochMilli() // 05:30 Bangkok = 22:30 UTC the day before
+        assertEquals(d(2026, 4, 14), SkipDates.localDate(instant, bkk))
+        assertEquals(d(2026, 4, 13), SkipDates.localDate(instant, ZoneId.of("UTC")))
+    }
+
+    @Test fun schedulerAsksAboutTheAlarmZoneDates() {
+        val tokyo = ZoneId.of("Asia/Tokyo")
+        val asked = ArrayList<LocalDate>()
+        // Mon-Fri 07:30 in Tokyo, "now" = Sunday 2026-11-01 20:00 in New York (= Monday 10:00 in Tokyo, alarm already passed)
+        val now = ZonedDateTime.of(2026, 11, 1, 20, 0, 0, 0, ZoneId.of("America/New_York")).toInstant()
+        val alarm = AlarmItem(1, "x", 7, 30, AlarmItem.WEEKDAYS, skipHolidays = true)
+        val next = AlarmMath.next(alarm, now, tokyo) { date -> asked += date; null }!!
+        assertEquals(d(2026, 11, 3), next.at.toLocalDate())        // Monday's 07:30 already passed in Tokyo -> Tuesday
+        assertEquals(tokyo, next.at.zone)
+        assertTrue(asked.isNotEmpty() && asked.all { it.dayOfWeek.value in 1..5 })
+        assertEquals(d(2026, 11, 3), asked.first())                 // asked about Tokyo's Tuesday, not New York's
+    }
+
+    @Test fun customDaysAloneAlsoTriggerTheLookup() {
+        val asked = ArrayList<LocalDate>()
+        val a = AlarmItem(1, "x", 7, 30, AlarmItem.WEEKDAYS, skipHolidays = false, skipCustomDays = true)
+        AlarmMath.next(a, Instant.parse("2026-11-04T00:00:00Z"), ZoneId.of("Asia/Bangkok")) { asked += it; null }
+        assertTrue(asked.isNotEmpty())
+        val b = a.copy(skipCustomDays = false)
+        asked.clear()
+        AlarmMath.next(b, Instant.parse("2026-11-04T00:00:00Z"), ZoneId.of("Asia/Bangkok")) { asked += it; null }
+        assertTrue(asked.isEmpty())
+    }
+
+    // ---- custom days
+    @Test fun singleDay() {
+        val c = CustomDay(1, "Dentist", d(2026, 12, 9))
+        assertTrue(c.matches(d(2026, 12, 9)))
+        assertFalse(c.matches(d(2026, 12, 8)))
+        assertFalse(c.matches(d(2027, 12, 9)))
+    }
+
+    @Test fun rangeIsInclusiveAndOrderInsensitive() {
+        val c = CustomDay(1, "Leave", d(2026, 12, 20), d(2026, 12, 24))
+        assertTrue(c.matches(d(2026, 12, 20)) && c.matches(d(2026, 12, 22)) && c.matches(d(2026, 12, 24)))
+        assertFalse(c.matches(d(2026, 12, 19)) || c.matches(d(2026, 12, 25)))
+        val reversed = CustomDay(2, "Leave", d(2026, 12, 24), d(2026, 12, 20))
+        assertTrue(reversed.matches(d(2026, 12, 22)))
+    }
+
+    @Test fun yearlyRepeatsEveryYear() {
+        val c = CustomDay(1, "Anniversary", d(2026, 2, 14), null, yearly = true)
+        assertTrue(c.matches(d(2026, 2, 14)) && c.matches(d(2031, 2, 14)) && c.matches(d(2020, 2, 14)))
+        assertFalse(c.matches(d(2027, 2, 15)))
+    }
+
+    @Test fun yearlyRangeCanCrossNewYear() {
+        val c = CustomDay(1, "Holiday break", d(2026, 12, 30), d(2027, 1, 2), yearly = true)
+        assertTrue(c.matches(d(2026, 12, 31)) && c.matches(d(2027, 1, 1)) && c.matches(d(2027, 1, 2)))
+        assertTrue(c.matches(d(2028, 1, 1)) && c.matches(d(2028, 12, 30)))
+        assertFalse(c.matches(d(2027, 1, 3)) || c.matches(d(2027, 12, 29)))
+    }
+
+    @Test fun yearlyLeapDayFallsBackToFeb28InCommonYears() {
+        val c = CustomDay(1, "Leap day", d(2024, 2, 29), null, yearly = true)
+        assertTrue(c.matches(d(2028, 2, 29)))
+        assertTrue(c.matches(d(2027, 2, 28)))
+        assertFalse(c.matches(d(2027, 3, 1)))
     }
 }

@@ -4,7 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import app.personal.clock.data.Store
-import app.personal.clock.holiday.HolidayChecker
+import app.personal.clock.core.SkipDates
+import app.personal.clock.holiday.SkipRules
 import app.personal.clock.widget.ClockWidgetProvider
 import java.time.Instant
 
@@ -35,11 +36,11 @@ class AlarmReceiver : BroadcastReceiver() {
 
         val settings = store.settings()
         val triggerAt = intent.getLongExtra(AlarmScheduler.EXTRA_TRIGGER_AT, System.currentTimeMillis())
-        val date = Instant.ofEpochMilli(triggerAt).atZone(settings.zone()).toLocalDate()
+        // The date is taken in the zone the alarm rings in, never the phone's or UTC's.
+        val date = SkipDates.localDate(triggerAt, settings.zone())
 
         // Fire-time check: catches holidays that appeared (e.g. calendar sync) after this alarm was scheduled.
-        val holiday = if (!alarm.isOneShot && alarm.skipHolidays) HolidayChecker.check(ctx, date, fresh = true) else null
-        val skipName = holiday?.name
+        val skipName = if (!alarm.isOneShot) SkipRules.reason(ctx, alarm, date, fresh = true) else null
 
         try {
             if (skipName != null) {
@@ -65,7 +66,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val alarm = store.alarm(id) ?: return
         val name = intent.getStringExtra(AlarmScheduler.EXTRA_HOLIDAY) ?: return
         val at = intent.getLongExtra(AlarmScheduler.EXTRA_TRIGGER_AT, System.currentTimeMillis())
-        val date = Instant.ofEpochMilli(at).atZone(store.settings().zone()).toLocalDate()
+        val date = SkipDates.localDate(at, store.settings().zone())
         if (alarm.enabled && store.settings().notifyOnSkip) Notifications.postSkipped(ctx, alarm, date, name)
         // Re-run the chain so a following skipped day (e.g. Songkran day 2 and 3) also gets its notice.
         AlarmScheduler.schedule(ctx, alarm)

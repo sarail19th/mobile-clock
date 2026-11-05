@@ -16,8 +16,8 @@ object AlarmMath {
 
     /**
      * Next time [alarm] should ring strictly after [now], in [zone].
-     * [holiday] returns the holiday name for a date or null; it is only consulted when the alarm
-     * has skipHolidays set and is not one-shot.
+     * [holiday] returns the reason to skip a date (holiday or custom-day name) or null; it is only consulted when the
+     * alarm skips holidays and/or custom days and is not one-shot. The date it receives is the local date in [zone].
      */
     fun next(
         alarm: AlarmItem,
@@ -34,7 +34,7 @@ object AlarmMath {
             if (!alarm.isOneShot && !alarm.runsOn(date.dayOfWeek)) continue
             val at = ZonedDateTime.of(date, time, zone)
             if (!at.toInstant().isAfter(now)) continue
-            if (!alarm.isOneShot && alarm.skipHolidays) {
+            if (!alarm.isOneShot && (alarm.skipHolidays || alarm.skipCustomDays)) {
                 val name = holiday(date)
                 if (name != null) {
                     skipped += Skipped(date, at, name)

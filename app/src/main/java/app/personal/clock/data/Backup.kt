@@ -2,6 +2,7 @@ package app.personal.clock.data
 
 import android.content.Context
 import app.personal.clock.core.AlarmItem
+import app.personal.clock.core.CustomDay
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -12,6 +13,7 @@ object Backup {
     fun export(ctx: Context): String {
         val store = Store.get(ctx)
         val alarms = JSONArray().also { arr -> store.alarms().forEach { arr.put(Store.alarmToJson(it)) } }
+        val custom = JSONArray().also { arr -> store.customDays().forEach { arr.put(Store.customDayToJson(it)) } }
         val world = JSONArray().also { arr -> store.world().forEach { arr.put(it) } }
         val widgets = JSONObject().also { o ->
             store.allWidgetConfigs().forEach { (id, cfg) -> o.put(id.toString(), cfg.toJson()) }
@@ -22,6 +24,7 @@ object Backup {
             .put("settings", store.settings().toJson())
             .put("alarms", alarms)
             .put("world", world)
+            .put("customDays", custom)
             .put("widgetDefault", store.widgetDefault().toJson())
             // Widget ids are not portable between installs; they are kept for reference only.
             .put("widgets", widgets)
@@ -38,6 +41,10 @@ object Backup {
         root.optJSONArray("alarms")?.let { arr ->
             val list: List<AlarmItem> = arr.mapObjects { Store.alarmFromJson(it) }
             store.replaceAlarms(list)
+        }
+        root.optJSONArray("customDays")?.let { arr ->
+            val list: List<CustomDay> = arr.mapObjects { Store.customDayFromJson(it) }
+            store.replaceCustomDays(list)
         }
         root.optJSONArray("world")?.let { arr ->
             val zones = (0 until arr.length()).mapNotNull { runCatching { arr.getString(it) }.getOrNull() }

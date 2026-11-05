@@ -9,7 +9,7 @@ import app.personal.clock.Tabs
 import app.personal.clock.core.AlarmItem
 import app.personal.clock.core.AlarmMath
 import app.personal.clock.data.Store
-import app.personal.clock.holiday.HolidayChecker
+import app.personal.clock.holiday.SkipRules
 import app.personal.clock.widget.ClockWidgetProvider
 import java.time.Instant
 
@@ -61,7 +61,7 @@ object AlarmScheduler {
             return
         }
         val settings = Store.get(ctx).settings()
-        val next = AlarmMath.next(alarm, Instant.now(), settings.zone(), HolidayChecker.lookup(ctx))
+        val next = AlarmMath.next(alarm, Instant.now(), settings.zone(), SkipRules.lookupFor(ctx, alarm))
         if (next == null) {
             alarmManager.cancel(firePi)
             return
@@ -132,16 +132,20 @@ object AlarmScheduler {
         ClockWidgetProvider.updateAll(ctx)
     }
 
-    /** The next public holiday that one of the enabled, skip-enabled alarms would have rung on (for the Alarm tab header). */
+    /** The next date (and why) that one of the enabled alarms would be skipped, for the Alarm tab header. */
     fun nextSkip(ctx: Context): Pair<java.time.LocalDate, String>? {
         val store = Store.get(ctx)
-        val alarms = store.alarms().filter { it.enabled && it.skipHolidays && !it.isOneShot }
+        val alarms = store.alarms().filter { it.enabled && (it.skipHolidays || it.skipCustomDays) && !it.isOneShot }
         if (alarms.isEmpty()) return null
+        val custom = store.customDays()
         val today = java.time.LocalDate.now(store.settings().zone())
         for (i in 0..365) {
             val d = today.plusDays(i.toLong())
-            val name = HolidayChecker.check(ctx, d).name ?: continue
-            if (alarms.any { it.runsOn(d.dayOfWeek) }) return d to name
+            for (a in alarms) {
+                if (!a.runsOn(d.dayOfWeek)) continue
+                val why = SkipRules.reason(ctx, a, d, false, custom)
+                if (why != null) return d to why
+            }
         }
         return null
     }
@@ -150,11 +154,10 @@ object AlarmScheduler {
     fun nextOverall(ctx: Context): NextInfo? {
         val store = Store.get(ctx)
         val zone = store.settings().zone()
-        val lookup = HolidayChecker.lookup(ctx)
         val now = Instant.now()
         return store.alarms()
             .filter { it.enabled }
-            .mapNotNull { a -> AlarmMath.next(a, now, zone, lookup)?.let { NextInfo(a, it.at, it.skipped) } }
+            .mapNotNull { a -> AlarmMath.next(a, now, zone, SkipRules.lookupFor(ctx, a))?.let { NextInfo(a, it.at, it.skipped) } }
             .minByOrNull { it.at.toInstant() }
     }
 }

@@ -3,9 +3,12 @@ package app.personal.clock.data
 import android.content.Context
 import android.content.SharedPreferences
 import app.personal.clock.core.AlarmItem
+import app.personal.clock.core.CustomDay
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * All persistent state lives here as small JSON blobs in one SharedPreferences file.
@@ -58,9 +61,15 @@ class Store private constructor(ctx: Context) {
     /** Next free id shared by alarms and timers (they use different PendingIntent request-code ranges). */
     fun newId(): Int = synchronized(LOCK) { allocId() }
 
-    /** Creates the three default alarms (group "Work") and the world list exactly once, and upgrades older installs. */
+    /**
+     * Creates the three default alarms (group "Work") and the world list exactly once, and upgrades older installs.
+     * A brand-new install starts in the phone's own time zone, so the app works for any country; installs from before
+     * time-zone selection existed keep Bangkok, which is what they were already using.
+     */
     fun ensureSeeded() = synchronized(LOCK) {
         if (!sp.getBoolean(K_SEEDED, false)) {
+            val settings = if (sp.contains(K_SETTINGS)) settings() else AppSettings(homeZoneId = ZoneId.systemDefault().id)
+            saveSettings(settings)
             val tueFri = AlarmItem.mask(
                 DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY,
             )
@@ -71,14 +80,49 @@ class Store private constructor(ctx: Context) {
                     AlarmItem(allocId(), "Afternoon", 16, 30, AlarmItem.WEEKDAYS, group = WORK_GROUP),
                 ),
             )
-            if (!sp.contains(K_WORLD)) writeWorld(listOf(AppSettings.DEFAULT_ZONE))
+            if (!sp.contains(K_WORLD)) writeWorld(listOf(settings.homeZoneId))
             sp.edit().putBoolean(K_SEEDED, true).putBoolean(K_GROUPS_MIGRATED, true).apply()
-        } else if (!sp.getBoolean(K_GROUPS_MIGRATED, false)) {
-            // Installs from before groups existed: put the three default alarms into "Work" (once).
-            val seedLabels = setOf("Morning Mon", "Morning Tue-Fri", "Afternoon")
-            writeAlarms(readAlarms().map { if (it.group.isBlank() && it.label in seedLabels) it.copy(group = WORK_GROUP) else it })
-            sp.edit().putBoolean(K_GROUPS_MIGRATED, true).apply()
+        } else {
+            if (!sp.contains(K_SETTINGS)) saveSettings(AppSettings()) // existing install: pin Bangkok explicitly
+            if (!sp.getBoolean(K_GROUPS_MIGRATED, false)) {
+                // Installs from before groups existed: put the three default alarms into "Work" (once).
+                val seedLabels = setOf("Morning Mon", "Morning Tue-Fri", "Afternoon")
+                writeAlarms(readAlarms().map { if (it.group.isBlank() && it.label in seedLabels) it.copy(group = WORK_GROUP) else it })
+                sp.edit().putBoolean(K_GROUPS_MIGRATED, true).apply()
+            }
         }
+    }
+
+    // ---------------------------------------------------------------- custom skip days
+    fun customDays(): List<CustomDay> = synchronized(LOCK) { readCustomDays() }
+
+    private fun readCustomDays(): List<CustomDay> {
+        val raw = sp.getString(K_CUSTOM_DAYS, null) ?: return emptyList()
+        return runCatching { JSONArray(raw).mapObjects { customDayFromJson(it) } }.getOrDefault(emptyList())
+    }
+
+    private fun writeCustomDays(list: List<CustomDay>) {
+        val arr = JSONArray()
+        list.forEach { arr.put(customDayToJson(it)) }
+        sp.edit().putString(K_CUSTOM_DAYS, arr.toString()).apply()
+    }
+
+    /** Inserts or replaces by id (id = 0 allocates a new one). */
+    fun upsertCustomDay(c: CustomDay): CustomDay = synchronized(LOCK) {
+        val list = readCustomDays().toMutableList()
+        val item = if (c.id == 0) c.copy(id = allocId()) else c
+        val idx = list.indexOfFirst { it.id == item.id }
+        if (idx >= 0) list[idx] = item else list += item
+        writeCustomDays(list)
+        item
+    }
+
+    fun deleteCustomDay(id: Int) = synchronized(LOCK) { writeCustomDays(readCustomDays().filterNot { it.id == id }) }
+
+    fun replaceCustomDays(list: List<CustomDay>) = synchronized(LOCK) {
+        writeCustomDays(list)
+        val maxId = list.maxOfOrNull { it.id } ?: 0
+        if (sp.getInt(K_NEXT_ID, 1) <= maxId) sp.edit().putInt(K_NEXT_ID, maxId + 1).apply()
     }
 
     // ---------------------------------------------------------------- settings
@@ -182,9 +226,22 @@ class Store private constructor(ctx: Context) {
         private const val K_STOPWATCH = "stopwatch"
         private const val K_LAST_SOURCE = "last_holiday_source"
         private const val K_GROUPS_MIGRATED = "groups_migrated"
+        private const val K_CUSTOM_DAYS = "custom_days"
         const val WORK_GROUP = "Work"
 
         fun get(ctx: Context): Store = Store(ctx.applicationContext)
+
+        fun customDayToJson(c: CustomDay): JSONObject = JSONObject()
+            .put("id", c.id).put("label", c.label).put("from", c.from.toString())
+            .put("to", c.to?.toString() ?: JSONObject.NULL).put("yearly", c.yearly)
+
+        fun customDayFromJson(o: JSONObject): CustomDay = CustomDay(
+            id = o.getInt("id"),
+            label = o.optString("label", ""),
+            from = LocalDate.parse(o.getString("from")),
+            to = if (o.isNull("to")) null else LocalDate.parse(o.getString("to")),
+            yearly = o.optBoolean("yearly", false),
+        )
 
         fun alarmToJson(a: AlarmItem): JSONObject = JSONObject()
             .put("id", a.id).put("label", a.label).put("hour", a.hour).put("minute", a.minute)
@@ -192,6 +249,7 @@ class Store private constructor(ctx: Context) {
             .put("ringtoneUri", a.ringtoneUri ?: JSONObject.NULL)
             .put("vibrate", a.vibrate).put("snoozeMinutes", a.snoozeMinutes)
             .put("skipHolidays", a.skipHolidays)
+            .put("skipCustomDays", a.skipCustomDays)
             .put("group", a.group)
 
         fun alarmFromJson(o: JSONObject): AlarmItem = AlarmItem(
@@ -205,6 +263,7 @@ class Store private constructor(ctx: Context) {
             vibrate = o.optBoolean("vibrate", true),
             snoozeMinutes = o.optInt("snoozeMinutes", 5).coerceIn(1, 60),
             skipHolidays = o.optBoolean("skipHolidays", true),
+            skipCustomDays = o.optBoolean("skipCustomDays", false),
             group = o.optString("group", ""),
         )
     }

@@ -6,15 +6,21 @@ import java.time.ZoneId
 
 /** Global app settings (one instance, stored as JSON). */
 data class AppSettings(
-    /** false = alarms/clock follow [homeZoneId] (Bangkok); true = follow the phone's zone. */
+    /** false = alarms/clock follow [homeZoneId]; true = follow the phone's current zone. */
     val followPhoneZone: Boolean = false,
     val homeZoneId: String = DEFAULT_ZONE,
     val defaultSnoozeMinutes: Int = 5,
     val autoStopMinutes: Int = 10,
-    /** Calendar names to treat as the Thai holiday calendar, separated by '|'. Case-insensitive "contains". */
-    val calendarNames: String = "Holidays in Thailand|วันหยุดในประเทศไทย",
+    /** Advanced: also treat calendars whose name contains one of these (separated by '|') as holiday calendars. */
+    val calendarNames: String = "",
     val notifyOnSkip: Boolean = true,
     val showSecondsInApp: Boolean = false,
+    /** Manual holiday country (ISO code, e.g. "FR"). Empty = automatic: the country of the alarm's time zone. */
+    val holidayRegion: String = "",
+    /** Use the app's built-in public-holiday list when one exists for the region (Thailand today). */
+    val useBuiltinHolidays: Boolean = true,
+    /** Phone calendars (ids) the user ticked as holiday calendars. Empty = pick automatically from the region. */
+    val calendarIds: List<Long> = emptyList(),
 ) {
     fun zone(): ZoneId =
         if (followPhoneZone) ZoneId.systemDefault()
@@ -31,21 +37,32 @@ data class AppSettings(
         .put("calendarNames", calendarNames)
         .put("notifyOnSkip", notifyOnSkip)
         .put("showSecondsInApp", showSecondsInApp)
+        .put("holidayRegion", holidayRegion)
+        .put("useBuiltinHolidays", useBuiltinHolidays)
+        .put("calendarIds", JSONArray().also { arr -> calendarIds.forEach { arr.put(it) } })
 
     companion object {
         const val DEFAULT_ZONE = "Asia/Bangkok"
 
+        /** The pre-universal default. Settings that still hold it are migrated to "" (the region now picks the calendar). */
+        private const val LEGACY_CALENDAR_NAMES = "Holidays in Thailand|\u0E27\u0E31\u0E19\u0E2B\u0E22\u0E38\u0E14\u0E43\u0E19\u0E1B\u0E23\u0E30\u0E40\u0E17\u0E28\u0E44\u0E17\u0E22"
+
         fun fromJson(o: JSONObject?): AppSettings {
             val d = AppSettings()
             if (o == null) return d
+            val storedNames = o.optString("calendarNames", d.calendarNames)
+            val ids = o.optJSONArray("calendarIds")
             return AppSettings(
                 followPhoneZone = o.optBoolean("followPhoneZone", d.followPhoneZone),
                 homeZoneId = o.optString("homeZoneId", d.homeZoneId).ifBlank { d.homeZoneId },
                 defaultSnoozeMinutes = o.optInt("defaultSnoozeMinutes", d.defaultSnoozeMinutes).coerceIn(1, 60),
                 autoStopMinutes = o.optInt("autoStopMinutes", d.autoStopMinutes).coerceIn(1, 60),
-                calendarNames = o.optString("calendarNames", d.calendarNames),
+                calendarNames = if (storedNames == LEGACY_CALENDAR_NAMES) "" else storedNames,
                 notifyOnSkip = o.optBoolean("notifyOnSkip", d.notifyOnSkip),
                 showSecondsInApp = o.optBoolean("showSecondsInApp", d.showSecondsInApp),
+                holidayRegion = o.optString("holidayRegion", d.holidayRegion),
+                useBuiltinHolidays = o.optBoolean("useBuiltinHolidays", d.useBuiltinHolidays),
+                calendarIds = if (ids == null) emptyList() else (0 until ids.length()).mapNotNull { runCatching { ids.getLong(it) }.getOrNull() },
             )
         }
     }

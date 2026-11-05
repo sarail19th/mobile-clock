@@ -4,7 +4,7 @@ A single-user, **fully offline** Android clock for a Samsung phone (One UI), bui
 clock widget that started showing seconds.
 
 - **Widget with no seconds**, fully customizable (font, size, alignment, background, opacity, colours, 12/24h, date above/below the time, next alarm, second city clock, corner radius, padding, shadow, tap action) with a live preview. Each placed widget has its own settings.
-- **Alarms** on a fixed work schedule that can **skip Thai public holidays**.
+- **Alarms** on a work schedule that can **skip public holidays of any country** (phone holiday calendar or a built-in list) **and your own days off**.
 - **Timer** (several at once), **Stopwatch**, **World clock** with `UTC±X` per city.
 - Uses the phone's own **system ringtones** on the alarm volume.
 - **No `INTERNET` permission.** No account, no analytics. CI fails the build if the permission ever appears.
@@ -22,13 +22,13 @@ New builds install **over** the old one without losing alarms, as long as they a
 
 ### Seed alarms (created on first launch, all editable)
 
-| Alarm | Days | Time | Skip Thai holidays |
+| Alarm | Days | Time | Skip public holidays |
 |---|---|---|---|
 | Morning Mon | Mon | 05:30 | yes |
 | Morning Tue-Fri | Tue–Fri | 07:30 | yes |
 | Afternoon | Mon–Fri | 16:30 | yes |
 
-Alarms fire on **Asia/Bangkok** time even if the phone changes zone (Settings → "Follow phone time zone", off by default).
+Alarms fire on your **Home time zone** (a new install uses the phone's zone; existing installs keep Asia/Bangkok) even if the phone changes zone while you travel. Turn on Settings → "Follow phone time zone" to follow the phone instead.
 
 ## Signing key (why updates need it)
 
@@ -52,17 +52,26 @@ From then on CI signs every build with that key (the log prints the certificate 
 
 To cut a numbered release: `git tag v1.0.0 && git push origin v1.0.0`.
 
-## Thai holiday skip
+## Holidays: any country, fully offline
 
-Checked in this order, per calendar year, **when an alarm is due** and when the "next alarm" label is computed:
+Alarms can skip **public holidays** and/or **your own days off**, per alarm. Nothing here needs the internet; the app has no network permission.
 
-1. **The phone's calendar** (needs the optional Calendar permission): all-day events in any calendar whose name contains a configured pattern (default `Holidays in Thailand` or `วันหยุดในประเทศไทย`). This is data Google Calendar has already synced, so it works offline. Enable the *Holidays in Thailand* calendar in Google Calendar on the phone.
-2. **Built-in list** `app/src/main/assets/th_holidays.json` if the permission is denied, no matching calendar exists, or it has no events for that year.
+**One switch decides the country.** Alarms ring on the *alarm time zone*: your **Home time zone** (chosen in Settings; a new install starts in the phone's zone) or, with **Follow phone time zone** on, whatever zone the phone is in. The holiday country is that zone's country (from the phone's own ICU time-zone data), unless you pick one under **Holiday country**. Zones that belong to no country (UTC, `Etc/GMT+7`) have no automatic country; choose one or use your own days.
 
-Settings shows which source is deciding and has a **"Test holiday check for date…"** tool. When an alarm is skipped you get a quiet *"Skipped: Songkran"* notification (can be turned off) and the next valid day is scheduled.
+The date a holiday is checked for is always the **local date in the zone the alarm rings in**, never the phone's or UTC's.
 
-> ### ⚠️ Yearly reminder: refresh `th_holidays.json`
-> The built-in list currently covers **2026 and 2027**. It was compiled by hand, not downloaded from an official source: **verify it against the official Bank of Thailand / cabinet list**, and add the next year every autumn. Entries marked `"provisional": true` (lunar-calendar days and some substitute days for 2027) are estimates. One-off cabinet-announced holidays and late substitute-day announcements are *not* in the file; the calendar layer catches them when it has synced. Past the last year in the file (and with no calendar data) alarms are simply **not** skipped.
+Where the holidays come from, in this order, for each year:
+1. **Phone holiday calendars** (optional Calendar permission, read-only): the calendars you tick in *Settings > Time zone & holidays > Phone calendars*. With none ticked, the app picks calendars that look like the country's holiday calendar (e.g. Google Calendar's "Holidays in Japan"). Turn the calendar on in Google Calendar and let it sync once; after that it works offline. Only all-day events count.
+2. **Built-in list**, if the app ships one for the country. Today that is **Thailand** (`assets/th_holidays.json`, 2026-27). To add a country, drop `assets/holidays_xx.json` (lowercase ISO code) in the same format.
+
+So any country works through its phone calendar, and Thailand also works with no calendar at all. If a country has no calendar and no built-in list, only your own days apply (the settings screen says so).
+
+**Custom skip days** (*Settings > Custom skip days*): single dates or ranges with a label, optionally repeating every year (ranges may cross New Year). Each alarm has two independent switches: *Skip public holidays* and *Skip my custom days*.
+
+When an alarm is skipped you get a quiet *"Skipped: <name>"* notification (can be turned off). *Test holiday check for date...* in Settings says whether a date is a holiday, **which source decided** (phone calendar / built-in list / none) and whether it is one of your custom days.
+
+> ### Yearly reminder: refresh `th_holidays.json`
+> The built-in Thai list covers **2026 and 2027**. It was compiled by hand, not downloaded from an official source: **verify it against the official Bank of Thailand / cabinet list** and add the next year every autumn. Entries marked `"provisional": true` are estimates. One-off cabinet-announced holidays are not in the file; the phone calendar catches them once synced. Past the last year in the file (and with no calendar data) alarms are simply **not** skipped.
 
 ## How alarms stay reliable
 
@@ -92,6 +101,10 @@ Only the *Classic* layout with the *System* font is a live `TextClock`. Every ot
 - **Storage is `SharedPreferences` + JSON, not Room/DataStore.** Alarms must be readable synchronously from a broadcast receiver, and it keeps the dependency list to just AndroidX core/activity/lifecycle + Compose. Backup/restore falls out for free (Settings → Backup).
 - Target/compile SDK is **35**; raise it in `app/build.gradle.kts` when your phone's Android version is confirmed (the app has no other version-specific code).
 - Widget fonts: **System** (follows the phone's font) plus eight bundled *static* single-weight TTFs under the SIL OFL 1.1 (licenses in `licenses/`): DM Sans, Nunito, Fredoka, Quicksand, JetBrains Mono, Playfair Display, Barlow Condensed, Poppins Thin. They are static instances cut from the variable originals with fontTools, because variable fonts are not reliably honoured inside widgets.
+
+## Who deploys
+
+One session is the **deploy owner** (branch `claude/new-session-wg4v13`, set as `DEPLOY_BRANCH` in `.github/workflows/build.yml`). Only pushes to that branch (or `main`) update the rolling **latest** release the phone downloads. Anyone else (other Claude sessions, contributors) works in a **git worktree on their own branch**, e.g. `git worktree add ../clock-feature -b my-feature`, and hands the result over; their pushes still run CI and upload an APK as a workflow artifact, but never touch the release page.
 
 ## Development
 

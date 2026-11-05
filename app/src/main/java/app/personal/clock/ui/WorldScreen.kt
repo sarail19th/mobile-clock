@@ -210,7 +210,8 @@ fun WorldScreen(onSettings: () -> Unit) {
     }
 
     if (adding) {
-        AddZoneDialog(
+        ZonePickerDialog(
+            title = "Add city",
             existing = zones,
             now = now,
             onDismiss = { adding = false },
@@ -263,14 +264,15 @@ private fun search(query: String, zones: List<String>, existing: List<String>, n
     return out.take(80)
 }
 
+/** Search-and-pick dialog for a city or time zone; [onPick] gets a saved-entry string ("Zone" or "Zone|Label"). */
 @Composable
-private fun AddZoneDialog(existing: List<String>, now: Instant, onDismiss: () -> Unit, onPick: (String) -> Unit) {
+fun ZonePickerDialog(title: String, existing: List<String>, now: Instant, onDismiss: () -> Unit, onPick: (String) -> Unit) {
     val zones = remember { selectableZones() }
     var query by remember { mutableStateOf("") }
     val matches = remember(query) { search(query, zones, existing, now) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add city") },
+        title = { Text(title) },
         text = {
             Column {
                 OutlinedTextField(

@@ -149,14 +149,11 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         }
 
-        SettingsCard("Time zone") {
-            LabeledRow("Follow phone time zone") {
-                Switch(checked = settings.followPhoneZone, onCheckedChange = { save(settings.copy(followPhoneZone = it)) })
-            }
-            Hint(
-                if (settings.followPhoneZone) "Alarms and the clock follow whatever zone the phone is set to."
-                else "Alarms and the clock stay on ${Fmt.cityName(settings.homeZoneId)} time, even if the phone changes zone while you travel.",
-            )
+        SettingsCard("Time zone & holidays") {
+            TimeZoneAndHolidays(settings, refresh, onSave = ::save, onGrant = { permLauncher.launch(Manifest.permission.READ_CALENDAR) })
+        }
+
+        SettingsCard("Clock display") {
             LabeledRow("Show seconds in the app's Clock tab") {
                 Switch(checked = settings.showSecondsInApp, onCheckedChange = { save(settings.copy(showSecondsInApp = it)) })
             }
@@ -177,10 +174,6 @@ fun SettingsScreen(onBack: () -> Unit) {
                 Text("Test ringing now")
             }
             Hint("Rings with the alarm volume, so check that volume too. Dismiss it from the ring screen.")
-        }
-
-        SettingsCard("Thai public holidays") {
-            HolidaySection(settings, refresh, onSave = ::save, onGrant = { permLauncher.launch(Manifest.permission.READ_CALENDAR) })
         }
 
         SettingsCard("Permission health") {
@@ -293,64 +286,6 @@ private fun Stepper(label: String, value: Int, unit: String, min: Int, max: Int,
     }
 }
 
-// ------------------------------------------------------------------ holidays
-
-@Composable
-private fun HolidaySection(settings: AppSettings, refresh: Int, onSave: (AppSettings) -> Unit, onGrant: () -> Unit) {
-    val ctx = LocalContext.current
-    var showPicker by remember { mutableStateOf(false) }
-    var testResult by remember { mutableStateOf<String?>(null) }
-    var names by remember(settings.calendarNames) { mutableStateOf(settings.calendarNames) }
-    val year = LocalDate.now().year
-    val source = remember(refresh, settings.calendarNames) { HolidayChecker.sourceFor(ctx, year) }
-    val hasPerm = HolidayChecker.hasCalendarPermission(ctx)
-    val builtinYears = remember { HolidayChecker.builtinYears(ctx) }
-
-    Hint("Checked when an alarm is due, and when working out the \"next alarm\". Order: 1) the holiday calendar already synced on this phone, 2) the built-in list.")
-    Text("Deciding source for $year: ${source.label}", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 6.dp))
-    if (!hasPerm) {
-        Hint("Calendar permission is off, so only the built-in list is used.")
-        OutlinedButton(onClick = onGrant) { Text("Allow calendar access") }
-    } else if (source != HolidayChecker.Source.CALENDAR) {
-        Hint("No matching holiday calendar with events for $year was found; using the built-in list. Enable \"Holidays in Thailand\" in Google Calendar on this phone, then let it sync.")
-    }
-    OutlinedTextField(
-        value = names,
-        onValueChange = { names = it },
-        label = { Text("Holiday calendar names (separate with |)") },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-    )
-    if (names != settings.calendarNames) {
-        TextButton(onClick = { onSave(settings.copy(calendarNames = names.trim())) }) { Text("Save names") }
-    }
-    Hint("Built-in list covers ${builtinYears.joinToString(", ")}. Refresh assets/th_holidays.json each year.")
-
-    OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.padding(top = 8.dp)) { Text("Test holiday check for date…") }
-    testResult?.let { Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp)) }
-
-    if (showPicker) {
-        val state = rememberDatePickerState()
-        DatePickerDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    val ms = state.selectedDateMillis
-                    if (ms != null) {
-                        val d = Instant.ofEpochMilli(ms).atZone(ZoneOffset.UTC).toLocalDate()
-                        val r = HolidayChecker.check(ctx, d, fresh = true)
-                        val day = d.format(DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale.getDefault()))
-                        testResult = if (r.name != null) "$day: HOLIDAY – ${r.name} (source: ${r.source.label})"
-                        else "$day: not a public holiday (source: ${r.source.label})"
-                    }
-                    showPicker = false
-                }) { Text("Check") }
-            },
-            dismissButton = { TextButton(onClick = { showPicker = false }) { Text("Cancel") } },
-        ) { DatePicker(state = state) }
-    }
-}
-
 // ------------------------------------------------------------------ permission health
 
 @Composable
@@ -421,7 +356,7 @@ private fun healthItems(ctx: Context, onRequest: (String) -> Unit): List<Health>
 
     list += Health(
         "Calendar access", HolidayChecker.hasCalendarPermission(ctx), true,
-        "Lets the holiday check read the Holidays in Thailand calendar already on this phone. Without it the built-in list is used.", "Allow",
+        "Lets the holiday check read the holiday calendars already synced on this phone (read-only). Without it only the built-in list and your own days are used.", "Allow",
     ) { onRequest(Manifest.permission.READ_CALENDAR) }
 
     list += Health(

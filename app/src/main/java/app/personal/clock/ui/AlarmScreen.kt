@@ -67,6 +67,7 @@ import app.personal.clock.alarm.AlarmScheduler
 import app.personal.clock.core.AlarmItem
 import app.personal.clock.core.Fmt
 import app.personal.clock.data.Store
+import app.personal.clock.holiday.HolidayChecker
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -271,10 +272,17 @@ private fun AlarmRow(a: AlarmItem, is24: Boolean, onToggle: (Boolean) -> Unit, o
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                 )
                 if (!a.isOneShot) DayDots(a.days)
-                if (a.skipHolidays && !a.isOneShot) {
+                if ((a.skipHolidays || a.skipCustomDays) && !a.isOneShot) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(painterResource(R.drawable.ic_calendar), contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("  Skips Thai holidays", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "  " + when {
+                                a.skipHolidays && a.skipCustomDays -> "Skips public holidays and my days"
+                                a.skipHolidays -> "Skips public holidays"
+                                else -> "Skips my custom days"
+                            },
+                            fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -315,6 +323,10 @@ private fun AlarmEditor(
     var days by remember { mutableIntStateOf(alarm.days) }
     var vibrate by remember { mutableStateOf(alarm.vibrate) }
     var skip by remember { mutableStateOf(alarm.skipHolidays) }
+    var skipCustom by remember { mutableStateOf(alarm.skipCustomDays) }
+    val customCount = remember { Store.get(ctx).customDays().size }
+    val alarmZone = remember { Store.get(ctx).settings().zone() }
+    val holidayRegion = remember { HolidayChecker.region(ctx).code }
     var snooze by remember { mutableIntStateOf(alarm.snoozeMinutes) }
     var ringtone by remember { mutableStateOf(alarm.ringtoneUri) }
     var group by remember { mutableStateOf(alarm.group) }
@@ -404,9 +416,20 @@ private fun AlarmEditor(
                     Hint("Alarms in a group can be switched on or off together from the list.")
                 }
                 HorizontalDivider()
-                SettingRow("Skip Thai public holidays", "Calendar first, built-in list as backup") {
+                SettingRow(
+                    "Skip public holidays",
+                    if (holidayRegion == null) "No country for ${alarmZone.id}: set one in Settings" else "${HolidayChecker.countryName(holidayRegion)} \u00B7 phone calendar and built-in list",
+                ) {
                     Switch(checked = skip, onCheckedChange = { skip = it }, enabled = days != 0)
                 }
+                HorizontalDivider()
+                SettingRow("Skip my custom days", if (customCount == 0) "None saved yet (Settings > Time zone & holidays)" else "$customCount saved") {
+                    Switch(checked = skipCustom, onCheckedChange = { skipCustom = it }, enabled = days != 0)
+                }
+                Hint(
+                    "Dates are judged in ${alarmZone.id}, the zone this alarm rings in.",
+                    Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
                 HorizontalDivider()
                 SettingRow("Sound", ringtoneTitle(ctx, ringtone), onClick = ::launchPicker) {
                     OutlinedButton(onClick = ::launchPicker) { Text("Choose") }
@@ -439,6 +462,7 @@ private fun AlarmEditor(
                         vibrate = vibrate,
                         snoozeMinutes = snooze,
                         skipHolidays = skip,
+                        skipCustomDays = skipCustom,
                         group = group.trim(),
                     ),
                 )

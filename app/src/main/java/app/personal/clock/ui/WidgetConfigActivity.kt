@@ -255,7 +255,7 @@ private fun ConfigScreen(
                         }
                         SectionTitle("Time zone")
                         ChipRow {
-                            listOf("Home zone (Bangkok)", "Phone's zone").forEachIndexed { i, n ->
+                            listOf("Home zone (${Fmt.cityName(homeId)})", "Phone's zone").forEachIndexed { i, n ->
                                 FilterChip(selected = cfg.zoneMode == i, onClick = { cfg = cfg.copy(zoneMode = i) }, label = { Text(n) })
                             }
                         }
