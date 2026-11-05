@@ -34,6 +34,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
+import app.personal.clock.widget.LayoutCaps
 import app.personal.clock.widget.WidgetTemplates
 import app.personal.clock.widget.WidgetTypefaces
 import androidx.compose.material3.Button
@@ -141,6 +142,7 @@ private fun ConfigScreen(
     val homeId = remember { store.settings().zone().id }
     val worldFallback = remember { worldZones.firstOrNull { it != homeId } ?: "Asia/Tokyo" }
     val custom = cfg.font != 0 || cfg.layout != WidgetConfig.LAYOUT_STACK
+    val caps = LayoutCaps.of(cfg.layout)
 
     Scaffold(
         bottomBar = {
@@ -235,8 +237,10 @@ private fun ConfigScreen(
                             SliderRow("Shadow softness: ${cfg.shadowBlur} dp", cfg.shadowBlur.toFloat(), 0f..20f) { cfg = cfg.copy(shadowBlur = it.roundToInt()) }
                             Hint("\"Soft glow\" gives the faint, wide shadow used by many health and weather widgets. Changing the shadow draws the widget as a picture.")
                         }
-                        SectionTitle("Accent colour")
-                        ColorRow("Minute hand on analog faces", cfg.accentColor, ACCENT_SWATCHES) { cfg = cfg.copy(accentColor = it) }
+                        if (caps.accent) {
+                            SectionTitle("Accent colour")
+                            ColorRow("Minute hand", cfg.accentColor, ACCENT_SWATCHES) { cfg = cfg.copy(accentColor = it) }
+                        }
                         SectionTitle("Time zone")
                         ChipRow {
                             listOf("Home zone (Bangkok)", "Phone's zone").forEachIndexed { i, n ->
@@ -246,23 +250,32 @@ private fun ConfigScreen(
                     }
                     2 -> {
                         // ------------------------------------------------ layout
-                        SectionTitle("Date position (Classic layout)")
-                        ChipRow {
-                            listOf("Above the time", "Below the time").forEachIndexed { i, n ->
-                                FilterChip(selected = (i == 0) == cfg.dateAbove, onClick = { cfg = cfg.copy(dateAbove = i == 0) }, label = { Text(n) })
+                        if (cfg.layout != WidgetConfig.LAYOUT_STACK) {
+                            Hint("The ${caps.name} layout has its own arrangement, so settings that it does not use are hidden. Choose the Classic template to get them back.")
+                        }
+                        if (caps.datePosition) {
+                            SectionTitle("Date position")
+                            ChipRow {
+                                listOf("Above the time", "Below the time").forEachIndexed { i, n ->
+                                    FilterChip(selected = (i == 0) == cfg.dateAbove, onClick = { cfg = cfg.copy(dateAbove = i == 0) }, label = { Text(n) })
+                                }
+                            }
+                            if (!cfg.showDate) Hint("The date is currently hidden. Turn it on in the Lines tab.")
+                        }
+                        if (caps.hAlign) {
+                            SectionTitle("Horizontal alignment")
+                            ChipRow {
+                                listOf("Left", "Center", "Right").forEachIndexed { i, n ->
+                                    FilterChip(selected = cfg.hAlign == i, onClick = { cfg = cfg.copy(hAlign = i) }, label = { Text(n) })
+                                }
                             }
                         }
-                        if (!cfg.showDate) Hint("The date is currently hidden. Turn it on in the Lines tab.")
-                        SectionTitle("Horizontal alignment")
-                        ChipRow {
-                            listOf("Left", "Center", "Right").forEachIndexed { i, n ->
-                                FilterChip(selected = cfg.hAlign == i, onClick = { cfg = cfg.copy(hAlign = i) }, label = { Text(n) })
-                            }
-                        }
-                        SectionTitle("Vertical alignment")
-                        ChipRow {
-                            listOf("Top", "Middle", "Bottom").forEachIndexed { i, n ->
-                                FilterChip(selected = cfg.vAlign == i, onClick = { cfg = cfg.copy(vAlign = i) }, label = { Text(n) })
+                        if (caps.vAlign) {
+                            SectionTitle("Vertical alignment")
+                            ChipRow {
+                                listOf("Top", "Middle", "Bottom").forEachIndexed { i, n ->
+                                    FilterChip(selected = cfg.vAlign == i, onClick = { cfg = cfg.copy(vAlign = i) }, label = { Text(n) })
+                                }
                             }
                         }
                         SliderRow("Padding: ${cfg.paddingDp} dp", cfg.paddingDp.toFloat(), 0f..40f) { cfg = cfg.copy(paddingDp = it.roundToInt()) }
@@ -299,50 +312,71 @@ private fun ConfigScreen(
                     }
                     else -> {
                         // ------------------------------------------------ one card per line: its own switch, size and colour
-                        Hint("Each line has its own size and colour. Tap a card to open it.")
-                        LineCard("Time", "${cfg.sizeSp} sp", null, {}, startOpen = false) {
-                            SliderRow("Size: ${cfg.sizeSp} sp", cfg.sizeSp.toFloat(), 24f..120f) { cfg = cfg.copy(sizeSp = it.roundToInt()) }
-                            ColorRow("Colour", cfg.textColor, TEXT_SWATCHES) { cfg = cfg.copy(textColor = it) }
-                            LabeledRow("24-hour clock") {
-                                Switch(checked = cfg.use24h, onCheckedChange = { cfg = cfg.copy(use24h = it, leadingZero = it) })
+                        Hint(
+                            if (cfg.layout == WidgetConfig.LAYOUT_STACK) "Each line has its own size and colour. Tap a card to open it."
+                            else "Showing only what the ${caps.name} layout uses. Lines it does not draw are greyed out.",
+                        )
+                        LineCard("Time", if (caps.timeSize) "${cfg.sizeSp} sp" else "colour only", null, {}, startOpen = false) {
+                            if (caps.timeSize) {
+                                SliderRow("Size: ${cfg.sizeSp} sp", cfg.sizeSp.toFloat(), 24f..120f) { cfg = cfg.copy(sizeSp = it.roundToInt()) }
                             }
-                            if (!cfg.use24h) {
-                                LabeledRow("Show AM/PM") { Switch(checked = cfg.showAmPm, onCheckedChange = { cfg = cfg.copy(showAmPm = it) }) }
-                            }
-                            LabeledRow("Leading zero (${if (cfg.use24h) "07:30" else "07:30 vs 7:30"})") {
-                                Switch(checked = cfg.leadingZero, onCheckedChange = { cfg = cfg.copy(leadingZero = it) })
+                            ColorRow(if (caps.timeSize) "Colour" else "Colour (dial and hour hand)", cfg.textColor, TEXT_SWATCHES) { cfg = cfg.copy(textColor = it) }
+                            if (caps.timeFormat) {
+                                LabeledRow("24-hour clock") {
+                                    Switch(checked = cfg.use24h, onCheckedChange = { cfg = cfg.copy(use24h = it, leadingZero = it) })
+                                }
+                                if (!cfg.use24h) {
+                                    LabeledRow("Show AM/PM") { Switch(checked = cfg.showAmPm, onCheckedChange = { cfg = cfg.copy(showAmPm = it) }) }
+                                }
+                                LabeledRow("Leading zero (${if (cfg.use24h) "07:30" else "07:30 vs 7:30"})") {
+                                    Switch(checked = cfg.leadingZero, onCheckedChange = { cfg = cfg.copy(leadingZero = it) })
+                                }
                             }
                             Hint("Seconds are never shown on this widget.")
                         }
-                        LineCard("Date", "${cfg.dateSizeSp} sp", cfg.showDate, { cfg = cfg.copy(showDate = it) }, startOpen = true) {
-                            SectionTitle("Position")
-                            ChipRow {
-                                listOf("Above the time", "Below the time").forEachIndexed { i, n ->
-                                    FilterChip(selected = (i == 0) == cfg.dateAbove, onClick = { cfg = cfg.copy(dateAbove = i == 0) }, label = { Text(n) })
+                        LineCard(
+                            "Date", "${cfg.dateSizeSp} sp", if (caps.dateSwitch) cfg.showDate else null, { cfg = cfg.copy(showDate = it) },
+                            startOpen = true, active = caps.dateLine, inactiveNote = "Not used by this layout.",
+                        ) {
+                            if (caps.dateNote.isNotEmpty()) Hint(caps.dateNote)
+                            if (caps.datePosition) {
+                                SectionTitle("Position")
+                                ChipRow {
+                                    listOf("Above the time", "Below the time").forEachIndexed { i, n ->
+                                        FilterChip(selected = (i == 0) == cfg.dateAbove, onClick = { cfg = cfg.copy(dateAbove = i == 0) }, label = { Text(n) })
+                                    }
                                 }
                             }
                             SliderRow("Size: ${cfg.dateSizeSp} sp", cfg.dateSizeSp.toFloat(), 10f..40f) { cfg = cfg.copy(dateSizeSp = it.roundToInt()) }
                             ColorRow("Colour", cfg.dateColor, TEXT_SWATCHES) { cfg = cfg.copy(dateColor = it) }
-                            SectionTitle("Format")
-                            ChipRow {
-                                WidgetConfig.DATE_FORMATS.forEachIndexed { i, f ->
-                                    val sample = java.time.LocalDate.of(2026, 11, 4)
-                                        .format(java.time.format.DateTimeFormatter.ofPattern(f, java.util.Locale.getDefault()))
-                                    FilterChip(selected = cfg.dateFormat == i, onClick = { cfg = cfg.copy(dateFormat = i) }, label = { Text(sample) })
+                            if (caps.dateFormat) {
+                                SectionTitle("Format")
+                                ChipRow {
+                                    WidgetConfig.DATE_FORMATS.forEachIndexed { i, f ->
+                                        val sample = java.time.LocalDate.of(2026, 11, 4)
+                                            .format(java.time.format.DateTimeFormatter.ofPattern(f, java.util.Locale.getDefault()))
+                                        FilterChip(selected = cfg.dateFormat == i, onClick = { cfg = cfg.copy(dateFormat = i) }, label = { Text(sample) })
+                                    }
                                 }
                             }
                         }
-                        LineCard("Next alarm", "${cfg.alarmSizeSp} sp", cfg.showNextAlarm, { cfg = cfg.copy(showNextAlarm = it) }, startOpen = true) {
+                        LineCard(
+                            "Next alarm", "${cfg.alarmSizeSp} sp", if (caps.alarmSwitch) cfg.showNextAlarm else null, { cfg = cfg.copy(showNextAlarm = it) },
+                            startOpen = true, active = caps.alarmLine, inactiveNote = "Not shown by this layout.",
+                        ) {
+                            if (!caps.alarmSwitch) Hint("This layout always shows the next alarm.")
                             SliderRow("Size: ${cfg.alarmSizeSp} sp", cfg.alarmSizeSp.toFloat(), 10f..32f) { cfg = cfg.copy(alarmSizeSp = it.roundToInt()) }
                             ColorRow("Colour", cfg.alarmColor, TEXT_SWATCHES) { cfg = cfg.copy(alarmColor = it) }
                         }
                         LineCard(
-                            "Second clock", if (cfg.showWorld) WorldEntry.label(cfg.worldZone.ifBlank { worldFallback }) else "Off", cfg.showWorld,
+                            "Second clock",
+                            if (cfg.showWorld || !caps.worldSwitch) WorldEntry.label(cfg.worldZone.ifBlank { worldFallback }) else "Off",
+                            if (caps.worldSwitch) cfg.showWorld else null,
                             { on ->
                                 val pick = cfg.worldZone.ifBlank { worldFallback }
                                 cfg = cfg.copy(showWorld = on, worldZone = pick)
                             },
-                            startOpen = false,
+                            startOpen = !caps.worldSwitch, active = caps.worldLine, inactiveNote = "Not shown by this layout.",
                         ) {
                             if (worldZones.size <= 1) Hint("Add more cities in the World tab to choose from.")
                             ChipRow {
@@ -350,8 +384,10 @@ private fun ConfigScreen(
                                     FilterChip(selected = cfg.worldZone == z, onClick = { cfg = cfg.copy(worldZone = z) }, label = { Text(WorldEntry.label(z)) })
                                 }
                             }
-                            SliderRow("Size: ${cfg.worldSizeSp} sp", cfg.worldSizeSp.toFloat(), 10f..32f) { cfg = cfg.copy(worldSizeSp = it.roundToInt()) }
-                            ColorRow("Label colour", cfg.worldColor, TEXT_SWATCHES) { cfg = cfg.copy(worldColor = it) }
+                            if (caps.worldStyle) {
+                                SliderRow("Size: ${cfg.worldSizeSp} sp", cfg.worldSizeSp.toFloat(), 10f..32f) { cfg = cfg.copy(worldSizeSp = it.roundToInt()) }
+                                ColorRow("Label colour", cfg.worldColor, TEXT_SWATCHES) { cfg = cfg.copy(worldColor = it) }
+                            }
                         }
                     }
                 }
@@ -374,8 +410,23 @@ private fun LineCard(
     enabled: Boolean?,
     onEnabled: (Boolean) -> Unit,
     startOpen: Boolean,
+    active: Boolean = true,
+    inactiveNote: String = "",
     content: @Composable () -> Unit,
 ) {
+    if (!active) {
+        // This layout does not draw the line: show it greyed out instead of offering settings that do nothing.
+        Card(
+            Modifier.fillMaxWidth().padding(top = 6.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        ) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f), modifier = Modifier.weight(1f))
+                Hint(inactiveNote)
+            }
+        }
+    } else {
     var open by remember { mutableStateOf(startOpen) }
     Card(
         Modifier.fillMaxWidth().padding(top = 6.dp),
@@ -397,6 +448,7 @@ private fun LineCard(
                 Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) { content() }
             }
         }
+    }
     }
 }
 
