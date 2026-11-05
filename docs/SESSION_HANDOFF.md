@@ -70,6 +70,11 @@ Owner-confirmed working on their phone (from their replies/screenshots): in-plac
 Acceptance checklist from the original spec still open on a real device: alarm rings with screen off / after reboot / in DND, 15-minute screen-off test, timer and stopwatch with screen off,
 holiday skip with calendar synced / disabled / permission denied.
 
+## 5b. Status since the handoff (Main Deployment session, 2026-11-05)
+- Batch A (owner-confirmed on phone): widget editor tabs fit on one line, option chips wrap, `Set Default` replaced by the ⋯ menu under the preview ("Use this look for new widgets", with confirmation), "Tap to change preview background" under the preview, shadow preset renamed "Soft", Line cards start collapsed (accordion).
+- Batch B (built, awaiting owner check): Settings is a short list of seven rows, each opening its own sub-page; system Back returns to the list.
+- Open request, not built: **Batch C** reorder Time/Date/Next alarm/Second clock (Classic layout only; up/down arrows; would replace the "date above/below" option, migrate `dateAbove`; live-TextClock layouts are static XML so ordering needs generated variants or picture mode).
+
 ## 6. Known limits and honest caveats
 - `assets/th_holidays.json` was **compiled by hand, not from an official source**; entries marked `provisional` (2027 lunar/substitute days) are estimates. Refresh yearly (README reminder). Only Thailand has a built-in list; other countries rely on the phone's holiday calendar or custom days.
   To add a country: `assets/holidays_xx.json` in the same format, from an official source.

@@ -13,6 +13,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -91,6 +94,8 @@ fun SettingsScreen(onBack: () -> Unit) {
     var settings by remember { mutableStateOf(store.settings()) }
     var refresh by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf<String?>(null) }
+    var page by remember { mutableIntStateOf(-1) } // -1 = the short list; 0.. = one sub-page
+    BackHandler(enabled = page >= 0) { page = -1 }
     OnResume { refresh++ }
 
     fun save(s: AppSettings) {
@@ -136,10 +141,13 @@ fun SettingsScreen(onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            FilledTonalIconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
-            Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            FilledTonalIconButton(onClick = { if (page >= 0) page = -1 else onBack() }) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
+            Text(
+                if (page >= 0) PAGE_TITLES[page] else "Settings",
+                style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
+            )
         }
-        HealthSummary(healthList)
+        if (page < 0) HealthSummary(healthList)
         message?.let {
             Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -149,18 +157,29 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         }
 
-        SettingsCard("Time zone & holidays") {
+        if (page < 0) {
+            val failing = healthList.count { !it.ok && !it.optional }
+            SettingsRow(PAGE_TITLES[0], "Home time zone: ${settings.zone().id}") { page = 0 }
+            SettingsRow(PAGE_TITLES[1], if (settings.showSecondsInApp) "Seconds shown in the app" else "Seconds hidden") { page = 1 }
+            SettingsRow(PAGE_TITLES[2], "Snooze ${settings.defaultSnoozeMinutes} min \u00B7 auto-stop ${settings.autoStopMinutes} min") { page = 2 }
+            SettingsRow(PAGE_TITLES[3], if (failing == 0) "All set" else "$failing to fix") { page = 3 }
+            SettingsRow(PAGE_TITLES[4], "Add a widget and how it works") { page = 4 }
+            SettingsRow(PAGE_TITLES[5], "Export or restore your data") { page = 5 }
+            SettingsRow(PAGE_TITLES[6], "Version and licences") { page = 6 }
+        }
+
+        if (page == 0) SettingsCard(null) {
             TimeZoneAndHolidays(settings, refresh, onSave = ::save, onGrant = { permLauncher.launch(Manifest.permission.READ_CALENDAR) })
         }
 
-        SettingsCard("Clock display") {
+        if (page == 1) SettingsCard(null) {
             LabeledRow("Show seconds in the app's Clock tab") {
                 Switch(checked = settings.showSecondsInApp, onCheckedChange = { save(settings.copy(showSecondsInApp = it)) })
             }
             Hint("The home-screen widget never shows seconds.")
         }
 
-        SettingsCard("Alarm behaviour") {
+        if (page == 2) SettingsCard(null) {
             Stepper("Default snooze for new alarms", settings.defaultSnoozeMinutes, "min", 1, 60) {
                 save(settings.copy(defaultSnoozeMinutes = it))
             }
@@ -176,7 +195,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             Hint("Rings with the alarm volume, so check that volume too. Dismiss it from the ring screen.")
         }
 
-        SettingsCard("Permission health") {
+        if (page == 3) SettingsCard(null) {
             val items = healthList
             items.forEachIndexed { i, h ->
                 HealthRow(h)
@@ -193,8 +212,8 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         }
 
-        SettingsCard("Widget") {
-            Hint("Add \"Clock (no seconds)\" from your launcher's widget picker. Each widget has its own look; long-press a placed widget and choose Settings/Reconfigure to change it. Use \"Save as default\" in the editor to reuse a look.")
+        if (page == 4) SettingsCard(null) {
+            Hint("Add \"Clock (no seconds)\" from your launcher's widget picker. Each widget has its own look; long-press a placed widget and choose Settings/Reconfigure to change it. In the editor, the \u22EF menu under the preview has \"Use this look for new widgets\".")
             val awm = remember { AppWidgetManager.getInstance(ctx) }
             if (awm.isRequestPinAppWidgetSupported) {
                 Button(onClick = { awm.requestPinAppWidget(ComponentName(ctx, ClockWidgetProvider::class.java), null, null) }, modifier = Modifier.padding(top = 4.dp)) {
@@ -203,7 +222,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         }
 
-        SettingsCard("Backup") {
+        if (page == 5) SettingsCard(null) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { exportLauncher.launch("personal-clock-backup.json") }, modifier = Modifier.weight(1f)) {
                     Text("Export", maxLines = 1)
@@ -215,7 +234,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             Hint("Saves alarms, world clocks, settings and the default widget look as a JSON file you choose where to keep.")
         }
 
-        SettingsCard("About") {
+        if (page == 6) SettingsCard(null) {
             @Suppress("DEPRECATION")
             val version = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
             Hint("Version $version · fully offline: this app has no network permission, account or analytics.")
@@ -264,14 +283,35 @@ private fun HealthSummary(items: List<Health>) {
 }
 
 @Composable
-private fun SettingsCard(title: String, content: @Composable () -> Unit) {
+private fun SettingsCard(title: String?, content: @Composable () -> Unit) {
     Card(
         Modifier.fillMaxWidth().padding(top = 12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            if (title != null) Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Column(Modifier.padding(top = 4.dp)) { content() }
+        }
+    }
+}
+
+private val PAGE_TITLES = listOf(
+    "Time zone & holidays", "Clock display", "Alarm behaviour", "Permission health", "Widget", "Backup", "About",
+)
+
+/** One row of the short Settings list: title, one-line summary, and an arrow. */
+@Composable
+private fun SettingsRow(title: String, summary: String, onClick: () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().padding(top = 10.dp).clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Hint(summary)
+            }
+            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null)
         }
     }
 }
