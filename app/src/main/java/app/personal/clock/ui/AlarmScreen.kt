@@ -28,6 +28,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -77,6 +79,12 @@ fun AlarmScreen(onSettings: () -> Unit) {
     var editing by remember { mutableStateOf<AlarmItem?>(null) }
     val tick by rememberTicker(60_000L)
     var version by remember { mutableIntStateOf(0) }
+    val uiPrefs = remember { ctx.getSharedPreferences("ui", 0) }
+    var collapsed by remember { mutableStateOf(uiPrefs.getStringSet("collapsed_groups", emptySet()).orEmpty().toSet()) }
+    fun toggleCollapsed(group: String) {
+        collapsed = if (group in collapsed) collapsed - group else collapsed + group
+        uiPrefs.edit().putStringSet("collapsed_groups", HashSet(collapsed)).apply()
+    }
 
     fun refresh() {
         alarms = store.alarms()
@@ -121,11 +129,12 @@ fun AlarmScreen(onSettings: () -> Unit) {
                                 Text("Turn an alarm on or add a new one.", fontSize = 14.sp)
                             }
                             skip?.let { (date, name) ->
-                                Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(painterResource(R.drawable.ic_calendar), contentDescription = null, modifier = Modifier.size(16.dp))
+                                Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.Top) {
+                                    Icon(painterResource(R.drawable.ic_calendar), contentDescription = null, modifier = Modifier.size(16.dp).padding(top = 1.dp))
                                     Text(
-                                        "  Next skip: " + date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())) + " · " + name,
+                                        "Next skip: " + date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())) + " \u00B7 " + name,
                                         fontSize = 12.sp,
+                                        modifier = Modifier.weight(1f).padding(start = 8.dp),
                                     )
                                 }
                             }
@@ -141,11 +150,14 @@ fun AlarmScreen(onSettings: () -> Unit) {
                 val grouped = alarms.groupBy { it.group.trim() }
                 val anyGroup = grouped.keys.any { it.isNotEmpty() }
                 grouped.forEach { (group, members) ->
+                    val isCollapsed = group in collapsed
                     if (anyGroup) {
                         item(key = "group:$group") {
                             GroupHeader(
                                 name = group.ifEmpty { "Other" },
                                 members = members,
+                                collapsed = isCollapsed,
+                                onToggleCollapse = { toggleCollapsed(group) },
                                 // Only real groups switch together; "Other" alarms are independent.
                                 onToggleAll = if (group.isEmpty()) null else { on ->
                                     members.forEach { store.upsertAlarm(it.copy(enabled = on)) }
@@ -154,15 +166,17 @@ fun AlarmScreen(onSettings: () -> Unit) {
                             )
                         }
                     }
-                    items(members, key = { it.id }) { a ->
-                        AlarmRow(
-                            a, is24,
-                            onToggle = { on ->
-                                store.upsertAlarm(a.copy(enabled = on))
-                                refresh()
-                            },
-                            onClick = { editing = a },
-                        )
+                    if (!isCollapsed) {
+                        items(members, key = { it.id }) { a ->
+                            AlarmRow(
+                                a, is24,
+                                onToggle = { on ->
+                                    store.upsertAlarm(a.copy(enabled = on))
+                                    refresh()
+                                },
+                                onClick = { editing = a },
+                            )
+                        }
                     }
                 }
             }
@@ -208,15 +222,28 @@ fun AlarmScreen(onSettings: () -> Unit) {
 }
 
 @Composable
-private fun GroupHeader(name: String, members: List<AlarmItem>, onToggleAll: ((Boolean) -> Unit)?) {
+private fun GroupHeader(
+    name: String,
+    members: List<AlarmItem>,
+    collapsed: Boolean,
+    onToggleCollapse: () -> Unit,
+    onToggleAll: ((Boolean) -> Unit)?,
+) {
     val on = members.count { it.enabled }
-    Row(Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 8.dp).clickable(onClick = onToggleCollapse).padding(start = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (collapsed) Icons.Default.KeyboardArrowRight else Icons.Default.KeyboardArrowDown,
+            contentDescription = if (collapsed) "Expand $name" else "Collapse $name",
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Column(Modifier.weight(1f).padding(start = 4.dp)) {
             Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            Hint("$on of ${members.size} on")
+            Hint(if (collapsed) "$on of ${members.size} on \u00B7 tap to show" else "$on of ${members.size} on")
         }
         if (onToggleAll != null) {
-            Text(if (on > 0) "All off" else "All on", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp))
             Switch(checked = on > 0, onCheckedChange = onToggleAll)
         }
     }
