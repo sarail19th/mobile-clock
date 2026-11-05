@@ -10,6 +10,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -470,6 +482,8 @@ private fun SliderRow(label: String, value: Float, range: ClosedFloatingPointRan
 @Composable
 private fun ColorRow(label: String, current: Int, swatches: List<Long>, onPick: (Int) -> Unit) {
     var hex by remember(current) { mutableStateOf("%06X".format(current and 0xFFFFFF)) }
+    var showPicker by remember { mutableStateOf(false) }
+    val isCustom = swatches.none { (it.toInt() and 0xFFFFFF) == (current and 0xFFFFFF) }
     Column {
         Text(label, style = MaterialTheme.typography.bodyMedium)
         Row(
@@ -486,6 +500,16 @@ private fun ColorRow(label: String, current: Int, swatches: List<Long>, onPick: 
                         .clickable { onPick(c) },
                 )
             }
+            // Rainbow button: opens the full colour picker. When the colour is not one of the swatches it shows it in the middle.
+            Box(
+                Modifier.size(34.dp).clip(CircleShape)
+                    .background(Brush.sweepGradient(listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red)))
+                    .border(if (isCustom) 3.dp else 1.dp, if (isCustom) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, CircleShape)
+                    .clickable { showPicker = true },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(Modifier.size(14.dp).clip(CircleShape).background(Color(current or (0xFF shl 24))).border(2.dp, Color.White, CircleShape))
+            }
             OutlinedTextField(
                 value = hex,
                 onValueChange = { v ->
@@ -499,4 +523,80 @@ private fun ColorRow(label: String, current: Int, swatches: List<Long>, onPick: 
             )
         }
     }
+    if (showPicker) {
+        ColorPickerDialog(initial = current or (0xFF shl 24), onDismiss = { showPicker = false }, onPick = { onPick(it); showPicker = false })
+    }
+}
+
+/** A slider drawn as a colour gradient; [value] is 0..1. Tap or drag anywhere on the bar. */
+@Composable
+private fun GradientBar(value: Float, colors: List<Color>, onChange: (Float) -> Unit) {
+    var width by remember { mutableIntStateOf(1) }
+    val density = LocalDensity.current
+    val latest by rememberUpdatedState(onChange)
+    Box(
+        Modifier.fillMaxWidth().height(34.dp).clip(RoundedCornerShape(17.dp))
+            .background(Brush.horizontalGradient(colors))
+            .onSizeChanged { width = it.width.coerceAtLeast(1) }
+            .pointerInput(Unit) { detectTapGestures { latest((it.x / width).coerceIn(0f, 1f)) } }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { change, _ ->
+                    change.consume()
+                    latest((change.position.x / width).coerceIn(0f, 1f))
+                }
+            },
+    ) {
+        Box(
+            Modifier.offset(x = with(density) { (value * width).toDp() } - 14.dp, y = 3.dp).size(28.dp).clip(CircleShape)
+                .background(Color.White).border(3.dp, Color(0x80000000), CircleShape),
+        )
+    }
+}
+
+/** Full colour picker: hue, saturation and brightness bars with a live preview, plus a hex box. */
+@Composable
+private fun ColorPickerDialog(initial: Int, onDismiss: () -> Unit, onPick: (Int) -> Unit) {
+    val start = remember {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(initial, hsv)
+        hsv
+    }
+    var h by remember { mutableFloatStateOf(start[0]) }
+    var sat by remember { mutableFloatStateOf(start[1]) }
+    var v by remember { mutableFloatStateOf(start[2]) }
+    fun argb(hh: Float, ss: Float, vv: Float): Int = android.graphics.Color.HSVToColor(floatArrayOf(hh.coerceIn(0f, 360f), ss.coerceIn(0f, 1f), vv.coerceIn(0f, 1f)))
+    val chosen = argb(h, sat, v)
+    var hexText by remember { mutableStateOf("%06X".format(initial and 0xFFFFFF)) }
+    LaunchedEffect(chosen) { hexText = "%06X".format(chosen and 0xFFFFFF) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Pick a colour") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Box(Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(14.dp)).background(Color(chosen)).border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp)))
+                Text("Colour", style = MaterialTheme.typography.labelMedium)
+                GradientBar(h / 360f, List(7) { Color(argb(it * 60f, 1f, 1f)) }) { h = it * 360f }
+                Text("Saturation", style = MaterialTheme.typography.labelMedium)
+                GradientBar(sat, listOf(Color(argb(h, 0f, v)), Color(argb(h, 1f, v)))) { sat = it }
+                Text("Brightness", style = MaterialTheme.typography.labelMedium)
+                GradientBar(v, listOf(Color.Black, Color(argb(h, sat, 1f)))) { v = it }
+                OutlinedTextField(
+                    value = hexText,
+                    onValueChange = { t ->
+                        val clean = t.uppercase().filter { it in "0123456789ABCDEF" }.take(6)
+                        hexText = clean
+                        if (clean.length == 6) {
+                            val hsv = FloatArray(3)
+                            android.graphics.Color.colorToHSV((0xFF000000 or clean.toLong(16)).toInt(), hsv)
+                            h = hsv[0]; sat = hsv[1]; v = hsv[2]
+                        }
+                    },
+                    label = { Text("Hex") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onPick(chosen or (0xFF shl 24)) }) { Text("Use colour") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
