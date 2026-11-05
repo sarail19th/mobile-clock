@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.personal.clock.core.Fmt
+import app.personal.clock.core.WorldEntry
 import app.personal.clock.data.Store
 import app.personal.clock.data.WidgetConfig
 import app.personal.clock.widget.WidgetRenderer
@@ -318,7 +319,7 @@ private fun ConfigScreen(
                             ColorRow("Colour", cfg.alarmColor, TEXT_SWATCHES) { cfg = cfg.copy(alarmColor = it) }
                         }
                         LineCard(
-                            "Second clock", if (cfg.showWorld) Fmt.cityName(cfg.worldZone.ifBlank { worldFallback }) else "Off", cfg.showWorld,
+                            "Second clock", if (cfg.showWorld) WorldEntry.label(cfg.worldZone.ifBlank { worldFallback }) else "Off", cfg.showWorld,
                             { on ->
                                 val pick = cfg.worldZone.ifBlank { worldFallback }
                                 cfg = cfg.copy(showWorld = on, worldZone = pick)
@@ -328,7 +329,7 @@ private fun ConfigScreen(
                             if (worldZones.size <= 1) Hint("Add more cities in the World tab to choose from.")
                             ChipRow {
                                 (worldZones + worldFallback).distinct().forEach { z ->
-                                    FilterChip(selected = cfg.worldZone == z, onClick = { cfg = cfg.copy(worldZone = z) }, label = { Text(Fmt.cityName(z)) })
+                                    FilterChip(selected = cfg.worldZone == z, onClick = { cfg = cfg.copy(worldZone = z) }, label = { Text(WorldEntry.label(z)) })
                                 }
                             }
                             SliderRow("Size: ${cfg.worldSizeSp} sp", cfg.worldSizeSp.toFloat(), 10f..32f) { cfg = cfg.copy(worldSizeSp = it.roundToInt()) }

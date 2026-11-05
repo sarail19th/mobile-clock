@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import app.personal.clock.R
 import app.personal.clock.alarm.AlarmScheduler
 import app.personal.clock.core.Fmt
+import app.personal.clock.core.WorldEntry
 import app.personal.clock.data.Store
 import java.time.Instant
 import java.time.ZoneId
@@ -61,7 +62,7 @@ fun ClockScreen(onSettings: () -> Unit) {
     val phoneZone = ZoneId.systemDefault()
     val zoneDiffers = phoneZone.rules.getOffset(nowInstant).totalSeconds != now.offset.totalSeconds
     val next = remember(tick) { AlarmScheduler.nextOverall(ctx) }
-    val others = remember { store.world().filter { it != zone.id }.take(2) }
+    val others = remember { store.world().filter { WorldEntry.zone(it) != zone.id }.take(2) }
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("Clock", onSettings)
@@ -114,7 +115,8 @@ fun ClockScreen(onSettings: () -> Unit) {
 
             if (others.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    others.forEach { id ->
+                    others.forEach { entry ->
+                        val id = WorldEntry.zone(entry)
                         val z = runCatching { ZoneId.of(id) }.getOrNull()
                         if (z != null) {
                             val local = nowInstant.atZone(z)
@@ -125,7 +127,7 @@ fun ClockScreen(onSettings: () -> Unit) {
                             ) {
                                 Column(Modifier.padding(14.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(Fmt.cityName(id), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
+                                        Text(WorldEntry.label(entry), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
                                         Icon(
                                             painterResource(if (day) R.drawable.ic_sun else R.drawable.ic_moon),
                                             contentDescription = if (day) "Day" else "Night",

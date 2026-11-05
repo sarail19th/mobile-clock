@@ -58,21 +58,27 @@ class Store private constructor(ctx: Context) {
     /** Next free id shared by alarms and timers (they use different PendingIntent request-code ranges). */
     fun newId(): Int = synchronized(LOCK) { allocId() }
 
-    /** Creates the three default alarms and the world list exactly once. */
+    /** Creates the three default alarms (group "Work") and the world list exactly once, and upgrades older installs. */
     fun ensureSeeded() = synchronized(LOCK) {
-        if (sp.getBoolean(K_SEEDED, false)) return@synchronized
-        val tueFri = AlarmItem.mask(
-            DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY,
-        )
-        writeAlarms(
-            listOf(
-                AlarmItem(allocId(), "Morning Mon", 5, 30, AlarmItem.mask(DayOfWeek.MONDAY)),
-                AlarmItem(allocId(), "Morning Tue-Fri", 7, 30, tueFri),
-                AlarmItem(allocId(), "Afternoon", 16, 30, AlarmItem.WEEKDAYS),
-            ),
-        )
-        if (!sp.contains(K_WORLD)) writeWorld(listOf(AppSettings.DEFAULT_ZONE))
-        sp.edit().putBoolean(K_SEEDED, true).apply()
+        if (!sp.getBoolean(K_SEEDED, false)) {
+            val tueFri = AlarmItem.mask(
+                DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY,
+            )
+            writeAlarms(
+                listOf(
+                    AlarmItem(allocId(), "Morning Mon", 5, 30, AlarmItem.mask(DayOfWeek.MONDAY), group = WORK_GROUP),
+                    AlarmItem(allocId(), "Morning Tue-Fri", 7, 30, tueFri, group = WORK_GROUP),
+                    AlarmItem(allocId(), "Afternoon", 16, 30, AlarmItem.WEEKDAYS, group = WORK_GROUP),
+                ),
+            )
+            if (!sp.contains(K_WORLD)) writeWorld(listOf(AppSettings.DEFAULT_ZONE))
+            sp.edit().putBoolean(K_SEEDED, true).putBoolean(K_GROUPS_MIGRATED, true).apply()
+        } else if (!sp.getBoolean(K_GROUPS_MIGRATED, false)) {
+            // Installs from before groups existed: put the three default alarms into "Work" (once).
+            val seedLabels = setOf("Morning Mon", "Morning Tue-Fri", "Afternoon")
+            writeAlarms(readAlarms().map { if (it.group.isBlank() && it.label in seedLabels) it.copy(group = WORK_GROUP) else it })
+            sp.edit().putBoolean(K_GROUPS_MIGRATED, true).apply()
+        }
     }
 
     // ---------------------------------------------------------------- settings
@@ -175,6 +181,8 @@ class Store private constructor(ctx: Context) {
         private const val K_WIDGET_PREFIX = "widget_"
         private const val K_STOPWATCH = "stopwatch"
         private const val K_LAST_SOURCE = "last_holiday_source"
+        private const val K_GROUPS_MIGRATED = "groups_migrated"
+        const val WORK_GROUP = "Work"
 
         fun get(ctx: Context): Store = Store(ctx.applicationContext)
 
@@ -184,6 +192,7 @@ class Store private constructor(ctx: Context) {
             .put("ringtoneUri", a.ringtoneUri ?: JSONObject.NULL)
             .put("vibrate", a.vibrate).put("snoozeMinutes", a.snoozeMinutes)
             .put("skipHolidays", a.skipHolidays)
+            .put("group", a.group)
 
         fun alarmFromJson(o: JSONObject): AlarmItem = AlarmItem(
             id = o.getInt("id"),
@@ -196,6 +205,7 @@ class Store private constructor(ctx: Context) {
             vibrate = o.optBoolean("vibrate", true),
             snoozeMinutes = o.optInt("snoozeMinutes", 5).coerceIn(1, 60),
             skipHolidays = o.optBoolean("skipHolidays", true),
+            group = o.optString("group", ""),
         )
     }
 }

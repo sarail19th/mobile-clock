@@ -140,7 +140,7 @@ private fun TimerCard(t: TimerItem, nowE: Long, onChange: () -> Unit) {
             Box(contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(
                     progress = { fraction },
-                    modifier = Modifier.size(84.dp),
+                    modifier = Modifier.size(76.dp),
                     strokeWidth = 8.dp,
                     color = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                     trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -151,20 +151,10 @@ private fun TimerCard(t: TimerItem, nowE: Long, onChange: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // Time and label get the full middle width (they used to wrap when the buttons sat beside them).
             Column(Modifier.weight(1f)) {
-                Text(Fmt.clockHms(left), fontSize = 34.sp, fontWeight = FontWeight.Light, maxLines = 1)
+                Text(Fmt.clockHms(left), fontSize = 32.sp, fontWeight = FontWeight.Light, maxLines = 1, softWrap = false)
                 Hint(t.label.ifBlank { Fmt.clockHms(t.durationMs) + " timer" })
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (running) {
-                    FilledTonalIconButton(onClick = { TimerController.pause(ctx, t.id); onChange() }) {
-                        Icon(painterResource(R.drawable.ic_pause), contentDescription = "Pause")
-                    }
-                } else {
-                    FilledIconButton(onClick = { TimerController.start(ctx, t.id); onChange() }) {
-                        Icon(painterResource(R.drawable.ic_play), contentDescription = if (t.state == TimerItem.PAUSED) "Resume" else "Start")
-                    }
-                }
                 Row {
                     IconButton(onClick = { TimerController.reset(ctx, t.id); onChange() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Reset")
@@ -172,6 +162,15 @@ private fun TimerCard(t: TimerItem, nowE: Long, onChange: () -> Unit) {
                     IconButton(onClick = { TimerController.delete(ctx, t.id); onChange() }) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                     }
+                }
+            }
+            if (running) {
+                FilledTonalIconButton(onClick = { TimerController.pause(ctx, t.id); onChange() }, modifier = Modifier.size(52.dp)) {
+                    Icon(painterResource(R.drawable.ic_pause), contentDescription = "Pause")
+                }
+            } else {
+                FilledIconButton(onClick = { TimerController.start(ctx, t.id); onChange() }, modifier = Modifier.size(52.dp)) {
+                    Icon(painterResource(R.drawable.ic_play), contentDescription = if (t.state == TimerItem.PAUSED) "Resume" else "Start")
                 }
             }
         }

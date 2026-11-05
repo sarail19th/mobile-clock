@@ -12,6 +12,7 @@ import app.personal.clock.Tabs
 import app.personal.clock.alarm.AlarmScheduler
 import app.personal.clock.alarm.Notifications
 import app.personal.clock.core.Fmt
+import app.personal.clock.core.WorldEntry
 import app.personal.clock.core.WidgetFit
 import app.personal.clock.core.WidgetFitter
 import app.personal.clock.data.AppSettings
@@ -197,7 +198,7 @@ object WidgetRenderer {
             val wf = if (cfg.use24h) "HH:mm" else "h:mm a"
             rv.setCharSequence(R.id.w_world_time, "setFormat12Hour", wf)
             rv.setCharSequence(R.id.w_world_time, "setFormat24Hour", wf)
-            rv.setString(R.id.w_world_time, "setTimeZone", cfg.worldZone)
+            rv.setString(R.id.w_world_time, "setTimeZone", WorldEntry.zone(cfg.worldZone))
             rv.setTextViewTextSize(R.id.w_world_time, TypedValue.COMPLEX_UNIT_SP, cfg.worldSizeSp * k)
             rv.setTextColor(R.id.w_world_time, cfg.textColor)
         }

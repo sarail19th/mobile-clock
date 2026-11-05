@@ -48,7 +48,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.personal.clock.core.Cities
 import app.personal.clock.core.Fmt
+import app.personal.clock.core.WorldEntry
 import app.personal.clock.data.Store
 import java.time.Instant
 import java.time.ZoneId
@@ -87,6 +89,15 @@ object ZoneCountries {
 
     fun of(zoneId: String): Info? = byZone[zoneId]
 
+    private val names = HashMap<String, String>()
+
+    /** English country name for an ISO code ("FR" -> "France"). */
+    fun nameOf(code: String): String = names.getOrPut(code) {
+        Locale.Builder().setRegion(code).build().getDisplayCountry(Locale.ENGLISH).ifBlank { code }
+    }
+
+    fun aliasCode(query: String): String? = aliases[query.trim().lowercase()]
+
     fun matches(zoneId: String, query: String): Boolean {
         val c = byZone[zoneId] ?: return false
         val q = query.trim().lowercase()
@@ -120,7 +131,9 @@ fun WorldScreen(onSettings: () -> Unit) {
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                items(zones, key = { it }) { id ->
+                items(zones, key = { it }) { entry ->
+                    val id = WorldEntry.zone(entry)
+                    val label = WorldEntry.label(entry)
                     val zone = runCatching { ZoneId.of(id) }.getOrNull()
                     if (zone != null) {
                         val zdt = now.atZone(zone)
@@ -131,7 +144,7 @@ fun WorldScreen(onSettings: () -> Unit) {
                             -1L -> "Yesterday"
                             else -> "${if (dayDiff > 0) "+" else ""}$dayDiff days"
                         }
-                        val isHome = id == homeZone.id
+                        val isHome = entry == homeZone.id
                         val dst = zone.rules.isDaylightSavings(now)
                         val frac = (zdt.hour * 60 + zdt.minute) / 1440f
                         Card(
@@ -145,7 +158,7 @@ fun WorldScreen(onSettings: () -> Unit) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(Fmt.cityName(id), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                             if (isHome) Pill("Home", MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, Modifier.padding(start = 8.dp))
                                             if (dst) Pill("DST", Color(0xFFFFF1D6), Color(0xFF7A4A00), Modifier.padding(start = 6.dp))
                                         }
@@ -159,9 +172,9 @@ fun WorldScreen(onSettings: () -> Unit) {
                                         fontSize = 32.sp, fontWeight = FontWeight.Light,
                                     )
                                     IconButton(onClick = {
-                                        zones = zones.filterNot { it == id }
+                                        zones = zones.filterNot { it == entry }
                                         store.saveWorld(zones)
-                                    }) { Icon(Icons.Default.Delete, contentDescription = "Remove ${Fmt.cityName(id)}") }
+                                    }) { Icon(Icons.Default.Delete, contentDescription = "Remove $label") }
                                 }
                                 // 24-hour strip in the city's own time: dark = night, gold = daytime, bar = now.
                                 Box(Modifier.padding(top = 10.dp, end = 12.dp).fillMaxWidth().height(16.dp), contentAlignment = Alignment.CenterStart) {
@@ -183,7 +196,8 @@ fun WorldScreen(onSettings: () -> Unit) {
                     }
                 }
                 item {
-                    Hint("Offsets come from the phone's built-in time-zone database, so daylight saving is handled automatically.")
+                    Hint("The bar is each city's own day, midnight to midnight: dark = night (before 06:00 and after 18:00), gold = daytime, the black mark = now. These are fixed hours, not the real sunrise and sunset.")
+                    Hint("Offsets come from the phone's built-in time-zone database, so daylight saving is handled automatically.", Modifier.padding(top = 6.dp))
                 }
             }
         }
@@ -209,19 +223,51 @@ fun WorldScreen(onSettings: () -> Unit) {
     }
 }
 
+private class Candidate(val entry: String, val title: String, val subtitle: String)
+
+private fun norm(text: String): String =
+    java.text.Normalizer.normalize(text.lowercase(), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+
+/** Cities first (so "Marseille" and "Beijing" work), then raw time zones; matches city, country, country code, zone id or "UTC+9". */
+private fun search(query: String, zones: List<String>, existing: List<String>, now: Instant): List<Candidate> {
+    val q = norm(query.trim()).replace('_', ' ')
+    val aliasCode = ZoneCountries.aliasCode(query)?.lowercase()
+    fun offset(zoneId: String) = Fmt.utcOffset(ZoneId.of(zoneId).rules.getOffset(now).totalSeconds)
+    fun offsetHit(zoneId: String) = q.isNotEmpty() && offset(zoneId).lowercase().replace(" ", "") == q.replace(" ", "")
+    val seen = HashSet<String>(existing)
+    val out = ArrayList<Candidate>()
+
+    val cities = if (q.isEmpty()) Cities.all.sortedBy { it.name } else Cities.all
+    for (c in cities) {
+        val entry = WorldEntry.make(c.zoneId, c.name)
+        if (entry in seen) continue
+        val country = ZoneCountries.nameOf(c.countryCode)
+        val hit = q.isEmpty() || norm(c.name).contains(q) || norm(country).contains(q) ||
+            c.countryCode.lowercase() == q || (aliasCode != null && c.countryCode.lowercase() == aliasCode) || offsetHit(c.zoneId)
+        if (hit) {
+            out += Candidate(entry, c.name, "$country \u00B7 ${c.zoneId} \u00B7 ${offset(c.zoneId)}")
+            seen += entry
+        }
+    }
+    if (q.isNotEmpty()) {
+        for (id in zones) {
+            if (id in seen) continue
+            val country = ZoneCountries.of(id)
+            val hit = norm(id).replace('_', ' ').contains(q) || (country != null && norm(country.name).contains(q)) || offsetHit(id)
+            if (hit) {
+                out += Candidate(id, Fmt.cityName(id), (country?.let { it.name + " \u00B7 " } ?: "") + "$id \u00B7 ${offset(id)}")
+                seen += id
+            }
+        }
+    }
+    return out.take(80)
+}
+
 @Composable
 private fun AddZoneDialog(existing: List<String>, now: Instant, onDismiss: () -> Unit, onPick: (String) -> Unit) {
-    val all = remember { selectableZones() }
+    val zones = remember { selectableZones() }
     var query by remember { mutableStateOf("") }
-    val matches = remember(query) {
-        val q = query.trim().lowercase().replace(' ', '_')
-        val list = if (q.isEmpty()) all else all.filter { id ->
-            id.lowercase().contains(q) ||
-                ZoneCountries.matches(id, query) ||
-                Fmt.utcOffset(ZoneId.of(id).rules.getOffset(now).totalSeconds).lowercase().replace(" ", "") == q.replace("_", "")
-        }
-        list.filterNot { it in existing }.take(80)
-    }
+    val matches = remember(query) { search(query, zones, existing, now) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add city") },
@@ -233,10 +279,10 @@ private fun AddZoneDialog(existing: List<String>, now: Instant, onDismiss: () ->
                     modifier = Modifier.fillMaxWidth(),
                 )
                 LazyColumn(Modifier.fillMaxWidth().height(320.dp).padding(top = 8.dp)) {
-                    items(matches, key = { it }) { id ->
-                        Column(Modifier.fillMaxWidth().clickable { onPick(id) }.padding(vertical = 10.dp)) {
-                            Text(Fmt.cityName(id), style = MaterialTheme.typography.bodyLarge)
-                            Hint((ZoneCountries.of(id)?.let { it.name + " \u00B7 " } ?: "") + "$id \u00B7 ${Fmt.utcOffset(ZoneId.of(id).rules.getOffset(now).totalSeconds)}")
+                    items(matches, key = { it.entry }) { c ->
+                        Column(Modifier.fillMaxWidth().clickable { onPick(c.entry) }.padding(vertical = 10.dp)) {
+                            Text(c.title, style = MaterialTheme.typography.bodyLarge)
+                            Hint(c.subtitle)
                         }
                         HorizontalDivider()
                     }

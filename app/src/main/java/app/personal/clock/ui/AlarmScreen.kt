@@ -11,6 +11,7 @@ import android.text.format.DateFormat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -136,15 +137,33 @@ fun AlarmScreen(onSettings: () -> Unit) {
                         Modifier.padding(top = 8.dp, start = 4.dp),
                     )
                 }
-                items(alarms, key = { it.id }) { a ->
-                    AlarmRow(
-                        a, is24,
-                        onToggle = { on ->
-                            store.upsertAlarm(a.copy(enabled = on))
-                            refresh()
-                        },
-                        onClick = { editing = a },
-                    )
+                // Grouped alarms get a header with one switch for the whole group; ungrouped ones sit under "Other".
+                val grouped = alarms.groupBy { it.group.trim() }
+                val anyGroup = grouped.keys.any { it.isNotEmpty() }
+                grouped.forEach { (group, members) ->
+                    if (anyGroup) {
+                        item(key = "group:$group") {
+                            GroupHeader(
+                                name = group.ifEmpty { "Other" },
+                                members = members,
+                                // Only real groups switch together; "Other" alarms are independent.
+                                onToggleAll = if (group.isEmpty()) null else { on ->
+                                    members.forEach { store.upsertAlarm(it.copy(enabled = on)) }
+                                    refresh()
+                                },
+                            )
+                        }
+                    }
+                    items(members, key = { it.id }) { a ->
+                        AlarmRow(
+                            a, is24,
+                            onToggle = { on ->
+                                store.upsertAlarm(a.copy(enabled = on))
+                                refresh()
+                            },
+                            onClick = { editing = a },
+                        )
+                    }
                 }
             }
         }
@@ -170,6 +189,7 @@ fun AlarmScreen(onSettings: () -> Unit) {
         ) {
             AlarmEditor(
                 alarm = e,
+                groups = alarms.map { it.group.trim() }.filter { it.isNotEmpty() }.distinct(),
                 onSave = { item ->
                     store.upsertAlarm(item)
                     editing = null
@@ -183,6 +203,21 @@ fun AlarmScreen(onSettings: () -> Unit) {
                 },
                 onCancel = { editing = null },
             )
+        }
+    }
+}
+
+@Composable
+private fun GroupHeader(name: String, members: List<AlarmItem>, onToggleAll: ((Boolean) -> Unit)?) {
+    val on = members.count { it.enabled }
+    Row(Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Hint("$on of ${members.size} on")
+        }
+        if (onToggleAll != null) {
+            Text(if (on > 0) "All off" else "All on", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp))
+            Switch(checked = on > 0, onCheckedChange = onToggleAll)
         }
     }
 }
@@ -242,6 +277,7 @@ private fun SettingRow(title: String, subtitle: String? = null, onClick: (() -> 
 @Composable
 private fun AlarmEditor(
     alarm: AlarmItem,
+    groups: List<String>,
     onSave: (AlarmItem) -> Unit,
     onDelete: () -> Unit,
     onCancel: () -> Unit,
@@ -254,6 +290,7 @@ private fun AlarmEditor(
     var skip by remember { mutableStateOf(alarm.skipHolidays) }
     var snooze by remember { mutableIntStateOf(alarm.snoozeMinutes) }
     var ringtone by remember { mutableStateOf(alarm.ringtoneUri) }
+    var group by remember { mutableStateOf(alarm.group) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         if (res.resultCode == Activity.RESULT_OK && res.data != null) {
@@ -326,6 +363,20 @@ private fun AlarmEditor(
                     )
                 }
                 HorizontalDivider()
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(
+                        value = group, onValueChange = { group = it.take(24) },
+                        label = { Text("Group (optional, e.g. Work)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        (listOf("Work") + groups).distinct().forEach { g ->
+                            AssistChip(onClick = { group = g }, label = { Text(g) })
+                        }
+                        if (group.isNotEmpty()) AssistChip(onClick = { group = "" }, label = { Text("No group") })
+                    }
+                    Hint("Alarms in a group can be switched on or off together from the list.")
+                }
+                HorizontalDivider()
                 SettingRow("Skip Thai public holidays", "Calendar first, built-in list as backup") {
                     Switch(checked = skip, onCheckedChange = { skip = it }, enabled = days != 0)
                 }
@@ -361,6 +412,7 @@ private fun AlarmEditor(
                         vibrate = vibrate,
                         snoozeMinutes = snooze,
                         skipHolidays = skip,
+                        group = group.trim(),
                     ),
                 )
             }) { Text("Save") }

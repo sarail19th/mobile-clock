@@ -107,6 +107,27 @@ class CoreTest {
         assertEquals("UTC-4", Fmt.utcOffset(summer))
     }
 
+    @Test fun everyBuiltInCityHasARealTimeZone() {
+        val bad = Cities.all.filter { runCatching { ZoneId.of(it.zoneId) }.isFailure }.map { it.name + "=" + it.zoneId }
+        assertTrue("invalid zones: $bad", bad.isEmpty())
+        assertTrue(Cities.all.size > 200)
+        assertEquals("Europe/Paris", Cities.all.first { it.name == "Marseille" }.zoneId)
+        assertEquals("Asia/Shanghai", Cities.all.first { it.name == "Beijing" }.zoneId)
+    }
+
+    @Test fun worldEntriesKeepTheChosenName() {
+        assertEquals("Europe/Paris", WorldEntry.zone("Europe/Paris|Marseille"))
+        assertEquals("Marseille", WorldEntry.label("Europe/Paris|Marseille"))
+        assertEquals("Paris", WorldEntry.label("Europe/Paris"))
+        assertEquals("Europe/Paris", WorldEntry.make("Europe/Paris", "Paris"))
+        assertEquals("Asia/Shanghai|Beijing", WorldEntry.make("Asia/Shanghai", "Beijing"))
+    }
+
+    @Test fun alarmsDefaultToNoGroup() {
+        assertEquals("", AlarmItem(1, "x", 7, 0, 0).group)
+        assertEquals("Work", AlarmItem(1, "x", 7, 0, 0, group = "Work").group)
+    }
+
     @Test fun hoursDifference() {
         assertEquals("+2 h", Fmt.hoursDiff(2 * 3600))
         assertEquals("\u22127 h", Fmt.hoursDiff(-7 * 3600))

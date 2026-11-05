@@ -19,6 +19,8 @@ data class AlarmItem(
     val vibrate: Boolean = true,
     val snoozeMinutes: Int = 5,
     val skipHolidays: Boolean = true,
+    /** Optional group name (e.g. "Work"); alarms in a group can be switched on/off together. Empty = no group. */
+    val group: String = "",
 ) {
     val isOneShot: Boolean get() = days == 0
 

@@ -10,6 +10,7 @@ import android.text.TextPaint
 import android.util.TypedValue
 import app.personal.clock.alarm.AlarmScheduler
 import app.personal.clock.core.Fmt
+import app.personal.clock.core.WorldEntry
 import app.personal.clock.core.WidgetFitter
 import app.personal.clock.data.Store
 import app.personal.clock.data.WidgetConfig
@@ -175,7 +176,7 @@ object WidgetScene {
             it.at.format(DateTimeFormatter.ofPattern("EEE", loc)) + " · in " + Fmt.until(it.at.toInstant().toEpochMilli() - System.currentTimeMillis())
         }
 
-        private val otherZone: ZoneId? = cfg.worldZone.takeIf { it.isNotBlank() }?.let { runCatching { ZoneId.of(it) }.getOrNull() }
+        private val otherZone: ZoneId? = cfg.worldZone.takeIf { it.isNotBlank() }?.let { runCatching { ZoneId.of(WorldEntry.zone(it)) }.getOrNull() }
         private val otherNow: ZonedDateTime? = otherZone?.let { Instant.now().atZone(it) }
         val homeLabel: String = Fmt.cityName(now.zone.id) + " · " + Fmt.utcOffset(now.offset.totalSeconds)
         val otherLabel: String = otherNow?.let { Fmt.cityName(otherZone!!.id) + " · " + Fmt.utcOffset(it.offset.totalSeconds) } ?: "Add a city"
