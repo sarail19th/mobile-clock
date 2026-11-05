@@ -86,4 +86,21 @@ class ModelsTest {
         }
         assertNull(Store.customDayFromJson(JSONObject(Store.customDayToJson(one).toString())).to)
     }
+
+    @Test fun widgetLineOrderDefaultsAndMigratesFromDateAboveBelow() {
+        assertEquals("TDAW", WidgetConfig.fromJson(JSONObject("{}")).order)
+        assertEquals("TDAW", WidgetConfig.fromJson(JSONObject("""{"dateAbove":false}""")).order)
+        assertEquals("DTAW", WidgetConfig.fromJson(JSONObject("""{"dateAbove":true}""")).order)
+        assertTrue(WidgetConfig.fromJson(JSONObject("""{"dateAbove":true}""")).dateAbove)
+        assertFalse(WidgetConfig().dateAbove)
+    }
+
+    @Test fun widgetLineOrderRoundTripsAndRejectsBadValues() {
+        val c = WidgetConfig(order = "AWTD")
+        assertEquals("AWTD", WidgetConfig.fromJson(c.toJson()).order)
+        assertEquals("TDAW", WidgetConfig.fromJson(JSONObject("""{"order":"TTAW"}""")).order)
+        assertEquals("TDAW", WidgetConfig.fromJson(JSONObject("""{"order":"TDA"}""")).order)
+        assertTrue(WidgetConfig.validOrder("WADT"))
+        assertFalse(WidgetConfig.validOrder("WADX"))
+    }
 }

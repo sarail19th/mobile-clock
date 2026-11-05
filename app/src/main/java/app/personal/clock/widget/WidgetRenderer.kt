@@ -61,7 +61,11 @@ object WidgetRenderer {
     fun hasCustomShadow(cfg: WidgetConfig): Boolean =
         cfg.shadow && (cfg.shadowStrength != WidgetConfig.DEFAULT_SHADOW_STRENGTH || cfg.shadowBlur != WidgetConfig.DEFAULT_SHADOW_BLUR)
 
-    fun usesBitmap(cfg: WidgetConfig): Boolean = cfg.font != 0 || cfg.layout != WidgetConfig.LAYOUT_STACK || hasCustomShadow(cfg)
+    /** The live-clock layout is fixed XML: it can put the date above or below the time, but not reorder anything else. */
+    fun liveOrder(cfg: WidgetConfig): Boolean = cfg.order == "TDAW" || cfg.order == "DTAW" || !WidgetConfig.validOrder(cfg.order)
+
+    fun usesBitmap(cfg: WidgetConfig): Boolean =
+        cfg.font != 0 || cfg.layout != WidgetConfig.LAYOUT_STACK || hasCustomShadow(cfg) || !liveOrder(cfg)
 
     /** The widget's time zone id as TextClock wants it. */
     fun clockZone(cfg: WidgetConfig, settings: AppSettings): String =

@@ -137,8 +137,11 @@ data class WidgetConfig(
     val leadingZero: Boolean = true,
     val showDate: Boolean = true,
     val dateFormat: Int = 0,
-    /** true = date line above the time, false = below. */
-    val dateAbove: Boolean = false,
+    /**
+     * Top-to-bottom order of the Classic layout's lines: a permutation of T (time), D (date), A (next alarm),
+     * W (second clock). Other layouts have a fixed arrangement and ignore it.
+     */
+    val order: String = DEFAULT_ORDER,
     val showNextAlarm: Boolean = true,
     val showWorld: Boolean = false,
     val worldZone: String = "",
@@ -150,6 +153,9 @@ data class WidgetConfig(
     val shadowBlur: Int = 4,
     val tapAction: Int = TAP_APP,
 ) {
+    /** True when the date sits above the time (the live-clock widget can only do this one reordering). */
+    val dateAbove: Boolean get() = order.indexOf('D') < order.indexOf('T')
+
     fun toJson(): JSONObject = JSONObject()
         .put("font", font).put("sizeSp", sizeSp).put("hAlign", hAlign).put("vAlign", vAlign)
         .put("bgMode", bgMode).put("bgColor", bgColor).put("bgOpacity", bgOpacity)
@@ -158,7 +164,7 @@ data class WidgetConfig(
         .put("dateSizeSp", dateSizeSp).put("alarmSizeSp", alarmSizeSp).put("alarmColor", alarmColor)
         .put("worldSizeSp", worldSizeSp).put("worldColor", worldColor).put("accentColor", accentColor).put("layout", layout)
         .put("use24h", use24h).put("showAmPm", showAmPm).put("leadingZero", leadingZero)
-        .put("showDate", showDate).put("dateFormat", dateFormat).put("dateAbove", dateAbove)
+        .put("showDate", showDate).put("dateFormat", dateFormat).put("order", order)
         .put("showNextAlarm", showNextAlarm).put("showWorld", showWorld).put("worldZone", worldZone)
         .put("zoneMode", zoneMode).put("shadow", shadow).put("shadowStrength", shadowStrength).put("shadowBlur", shadowBlur).put("tapAction", tapAction)
 
@@ -182,6 +188,11 @@ data class WidgetConfig(
         const val TAP_APP = 0
         const val TAP_ALARMS = 1
         const val TAP_NONE = 2
+
+        const val DEFAULT_ORDER = "TDAW"
+
+        /** A usable order is exactly the four letters T, D, A, W once each, in any sequence. */
+        fun validOrder(s: String): Boolean = s.length == 4 && s.toSet() == setOf('T', 'D', 'A', 'W')
 
         const val FONT_COUNT = 9
         const val DEFAULT_SHADOW_STRENGTH = 70
@@ -219,7 +230,9 @@ data class WidgetConfig(
                 leadingZero = o.optBoolean("leadingZero", d.leadingZero),
                 showDate = o.optBoolean("showDate", d.showDate),
                 dateFormat = o.optInt("dateFormat", d.dateFormat).coerceIn(0, DATE_FORMATS.size - 1),
-                dateAbove = o.optBoolean("dateAbove", d.dateAbove),
+                // Older saves only knew "date above/below the time".
+                order = o.optString("order", "").takeIf { validOrder(it) }
+                    ?: if (o.has("dateAbove")) (if (o.optBoolean("dateAbove")) "DTAW" else DEFAULT_ORDER) else d.order,
                 showNextAlarm = o.optBoolean("showNextAlarm", d.showNextAlarm),
                 showWorld = o.optBoolean("showWorld", d.showWorld),
                 worldZone = o.optString("worldZone", d.worldZone),

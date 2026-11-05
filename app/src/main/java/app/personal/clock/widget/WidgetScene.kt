@@ -126,18 +126,22 @@ object WidgetScene {
                 )
                 val k = fit.scale
                 val rows = ArrayList<Row>()
-                val dateRow = Row(listOf(Txt(text.date, cfg.dateSizeSp * k, cfg.dateColor)))
-                if (fit.showDate && cfg.dateAbove) rows += dateRow
-                rows += timeRow(cfg, text, k)
-                if (fit.showDate && !cfg.dateAbove) rows += dateRow
-                if (fit.showAlarm && text.alarm != null) rows += Row(listOf(Txt(text.alarm, cfg.alarmSizeSp * k, cfg.alarmColor)))
-                if (fit.showWorld && text.worldLabel != null) {
-                    rows += Row(
-                        listOf(
-                            Txt(text.worldLabel, cfg.worldSizeSp * k, cfg.worldColor),
-                            Txt(text.otherTime + if (text.otherAmpm.isEmpty()) "" else " " + text.otherAmpm, cfg.worldSizeSp * k, cfg.textColor, gapDp = 6f),
-                        ),
-                    )
+                // The user's order of the four lines (T time, D date, A next alarm, W second clock).
+                val order = if (WidgetConfig.validOrder(cfg.order)) cfg.order else WidgetConfig.DEFAULT_ORDER
+                for (line in order) {
+                    when (line) {
+                        'T' -> rows += timeRow(cfg, text, k)
+                        'D' -> if (fit.showDate) rows += Row(listOf(Txt(text.date, cfg.dateSizeSp * k, cfg.dateColor)))
+                        'A' -> if (fit.showAlarm && text.alarm != null) rows += Row(listOf(Txt(text.alarm, cfg.alarmSizeSp * k, cfg.alarmColor)))
+                        'W' -> if (fit.showWorld && text.worldLabel != null) {
+                            rows += Row(
+                                listOf(
+                                    Txt(text.worldLabel, cfg.worldSizeSp * k, cfg.worldColor),
+                                    Txt(text.otherTime + if (text.otherAmpm.isEmpty()) "" else " " + text.otherAmpm, cfg.worldSizeSp * k, cfg.textColor, gapDp = 6f),
+                                ),
+                            )
+                        }
+                    }
                 }
                 blocks += Block(inner, rows, cfg.hAlign, cfg.vAlign)
             }

@@ -56,7 +56,7 @@ object WidgetTemplates {
             showNextAlarm = true, showWorld = false, paddingDp = 12, cornerStep = 6,
         )
         else -> base.copy(
-            layout = WidgetConfig.LAYOUT_STACK, sizeSp = 64, dateSizeSp = 18, alarmSizeSp = 15, showDate = true, dateAbove = false,
+            layout = WidgetConfig.LAYOUT_STACK, sizeSp = 64, dateSizeSp = 18, alarmSizeSp = 15, showDate = true, order = WidgetConfig.DEFAULT_ORDER,
             showNextAlarm = true, showWorld = false, paddingDp = 12,
         )
     }
