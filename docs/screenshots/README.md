@@ -6,7 +6,7 @@ Drop phone screenshots here (JPEG, metadata stripped with `convert -strip -quali
 |---|---|
 | `clock.jpg`, `alarms.jpg`, `timer.jpg`, `stopwatch.jpg`, `world.jpg` | done |
 | `widget-editor-templates.jpg`, `widget-editor-lines.jpg` | done |
-| `widget-home.jpg` | wanted: home screen with the widget placed; use a wallpaper you own or that is free to publish |
+| `widget-home.jpg` | done |
 | `settings.jpg` | wanted: Settings list, or Permission health with everything green |
 
 Tips: Samsung power + volume-down takes a screenshot; keep them portrait, around 1080 px wide, and run

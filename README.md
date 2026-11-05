@@ -21,14 +21,15 @@ Package: `app.personal.clock` · minSdk 31 · target/compile SDK 35 · Kotlin + 
   <img src="docs/screenshots/world.jpg" width="18%" alt="World clock with a day and night bar per city">
 </p>
 
-The widget editor, with a live preview, ready-made templates and a card per line that you can reorder:
+The widget: three looks on a home screen (compact, analog + digital, and a frosted dual clock), and the editor with a live preview, ready-made templates and a card per line that you can reorder:
 
 <p align="center">
+  <img src="docs/screenshots/widget-home.jpg" width="22%" alt="Three widgets on a home screen: compact, analog plus digital, and a frosted dual clock">
   <img src="docs/screenshots/widget-editor-templates.jpg" width="22%" alt="Widget editor: templates with live preview">
   <img src="docs/screenshots/widget-editor-lines.jpg" width="22%" alt="Widget editor: per-line size, colour and order">
 </p>
 
-A home-screen photo and the Settings list will be added; the capture checklist is in [`docs/screenshots/`](docs/screenshots/README.md).
+The capture checklist for further screenshots is in [`docs/screenshots/`](docs/screenshots/README.md).
 
 ## Install on the phone
 
