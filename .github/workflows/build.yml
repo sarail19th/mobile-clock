@@ -13,7 +13,7 @@ permissions:
 # worktrees on their own branches: CI still builds and uploads their APK as a workflow artifact, but it can
 # never replace what the owner downloads from the release page.
 env:
-  DEPLOY_BRANCH: claude/new-session-wg4v13
+  DEPLOY_BRANCH: claude/mobile-clock-deployment-rekg1p
 
 concurrency:
   group: build-${{ github.ref }}

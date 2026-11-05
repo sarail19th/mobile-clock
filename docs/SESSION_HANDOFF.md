@@ -13,7 +13,7 @@ The owner wants it **universal** (not Thailand-only): holidays follow the alarm 
 holiday calendar, Thailand also has a built-in list, plus custom skip days.
 
 ## 2. Deployment model (important)
-- **Deploy owner = the session that owns branch `claude/new-session-wg4v13`.** Set in `.github/workflows/build.yml` as `DEPLOY_BRANCH`. If the new
+- **Deploy owner = the session that owns branch `claude/mobile-clock-deployment-rekg1p`** (the Main Deployment session since 2026-11-05; the first build session used `claude/new-session-wg4v13`, now retired). Set in `.github/workflows/build.yml` as `DEPLOY_BRANCH`. If the new
   Main Deployment session uses another branch, change `DEPLOY_BRANCH` (or merge to `main`, which also publishes) in the same commit.
 - Every push runs CI: unit tests → `assembleRelease` → "no INTERNET" check → APK as a workflow artifact. **Only the deploy branch (or `main`)**
   also refreshes the rolling pre-release **`latest`** (https://github.com/sarail19th/mobile-clock/releases/tag/latest, file `PersonalClock-latest.apk`).
