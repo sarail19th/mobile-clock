@@ -242,7 +242,7 @@ private fun ConfigScreen(
                         if (cfg.shadow) {
                             ChipRow {
                                 listOf(
-                                    Triple("Soft glow", 38, 9),
+                                    Triple("Soft (Huawei-like)", 30, 2),
                                     Triple("Normal", WidgetConfig.DEFAULT_SHADOW_STRENGTH, WidgetConfig.DEFAULT_SHADOW_BLUR),
                                     Triple("Strong", 90, 3),
                                 ).forEach { (name, strength, blur) ->
@@ -255,7 +255,7 @@ private fun ConfigScreen(
                             }
                             SliderRow("Shadow darkness: ${cfg.shadowStrength}%", cfg.shadowStrength.toFloat(), 0f..100f) { cfg = cfg.copy(shadowStrength = it.roundToInt()) }
                             SliderRow("Shadow softness: ${cfg.shadowBlur} dp", cfg.shadowBlur.toFloat(), 0f..20f) { cfg = cfg.copy(shadowBlur = it.roundToInt()) }
-                            Hint("\"Soft glow\" gives the faint, wide shadow used by many health and weather widgets. Changing the shadow draws the widget as a picture.")
+                            Hint("\"Soft (Huawei-like)\" is a faint, tight shadow measured from a Huawei Health widget: about a third as dark as Normal and only a couple of pixels wide. Changing the shadow draws the widget as a picture.")
                         }
                         if (caps.accent) {
                             SectionTitle("Accent colour")
