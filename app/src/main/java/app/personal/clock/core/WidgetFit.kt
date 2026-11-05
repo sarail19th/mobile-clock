@@ -17,7 +17,7 @@ data class WidgetFit(
 }
 
 object WidgetFitter {
-    const val MONO_FONT = 2
+    const val MONO_FONT = 6
 
     fun sub(sz: Float): Float = (sz * 0.28f).coerceIn(12f, 28f)
 

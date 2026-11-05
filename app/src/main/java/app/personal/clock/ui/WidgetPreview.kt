@@ -1,7 +1,8 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalTextApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class)
 
 package app.personal.clock.ui
 
+import android.graphics.Typeface
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,17 +27,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontVariation
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.personal.clock.R
 import app.personal.clock.core.Fmt
 import app.personal.clock.core.WidgetFitter
 import app.personal.clock.data.Store
@@ -46,32 +41,16 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** Android system font families: identical lookups in the widget layouts and in this preview. */
 object WidgetFonts {
-    val names = listOf("Sans", "Rounded", "Mono", "Serif", "Condensed", "Thin")
-
-    // NOTE: FontVariation.Settings(weight, style) already adds the 'wght' axis itself; adding
-    // FontVariation.weight() again throws "'wght' must be unique" (this crashed the widget settings screen).
-    private fun variable(res: Int, weight: Int) = FontFamily(
-        Font(
-            resId = res,
-            weight = FontWeight(weight),
-            style = FontStyle.Normal,
-            variationSettings = FontVariation.Settings(FontWeight(weight), FontStyle.Normal),
-        ),
+    val names = listOf("Regular", "Light", "Thin", "Bold", "Condensed", "Serif", "Mono")
+    private val systemNames = listOf(
+        "sans-serif", "sans-serif-light", "sans-serif-thin", "sans-serif-black",
+        "sans-serif-condensed", "serif", "monospace",
     )
 
-    // Same pinned weights as the 'fontVariationSettings' in the generated widget layouts.
     private val families: List<FontFamily> by lazy {
-        // A font problem must never take the settings screen down: fall back to the system font.
-        fun safe(build: () -> FontFamily) = runCatching(build).getOrDefault(FontFamily.Default)
-        listOf(
-            safe { variable(R.font.dm_sans, 500) },
-            safe { variable(R.font.nunito, 600) },
-            safe { variable(R.font.jetbrains_mono, 500) },
-            safe { variable(R.font.playfair_display, 500) },
-            safe { FontFamily(Font(R.font.barlow_condensed)) },
-            safe { FontFamily(Font(R.font.poppins_thin)) },
-        )
+        systemNames.map { n -> runCatching { FontFamily(Typeface.create(n, Typeface.NORMAL)) }.getOrDefault(FontFamily.Default) }
     }
 
     fun family(index: Int): FontFamily = families[index.coerceIn(0, families.size - 1)]

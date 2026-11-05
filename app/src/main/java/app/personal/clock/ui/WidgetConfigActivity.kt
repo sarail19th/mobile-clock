@@ -107,7 +107,7 @@ class WidgetConfigActivity : ComponentActivity() {
 private val BG_SWATCHES = listOf(0xFF1B1F2A, 0xFF000000, 0xFFFFFFFF, 0xFF0B3D91, 0xFF00695C, 0xFF4A148C, 0xFFB71C1C, 0xFFFFB300)
 private val TEXT_SWATCHES = listOf(0xFFFFFFFF, 0xFF000000, 0xFFD0D4DC, 0xFFFFD54F, 0xFF80DEEA, 0xFFF48FB1, 0xFFA5D6A7, 0xFFFF8A65)
 
-private val SECTIONS = listOf("Text", "Layout", "Background", "Lines")
+private val SECTIONS = listOf("Text", "Layout", "Background", "Extras")
 
 @Composable
 private fun ConfigScreen(
@@ -191,6 +191,13 @@ private fun ConfigScreen(
                     }
                     1 -> {
                         // ------------------------------------------------ layout
+                        SectionTitle("Date position (above or below the time)")
+                        ChipRow {
+                            listOf("Above the time", "Below the time").forEachIndexed { i, n ->
+                                FilterChip(selected = (i == 0) == cfg.dateAbove, onClick = { cfg = cfg.copy(dateAbove = i == 0) }, label = { Text(n) })
+                            }
+                        }
+                        if (!cfg.showDate) Hint("The date is currently hidden. Turn it on in the Extras tab.")
                         SectionTitle("Horizontal alignment")
                         ChipRow {
                             listOf("Left", "Center", "Right").forEachIndexed { i, n ->
@@ -239,12 +246,6 @@ private fun ConfigScreen(
                         // ------------------------------------------------ extra lines
                         LabeledRow("Date") { Switch(checked = cfg.showDate, onCheckedChange = { cfg = cfg.copy(showDate = it) }) }
                         if (cfg.showDate) {
-                            SectionTitle("Date position")
-                            ChipRow {
-                                listOf("Above the time", "Below the time").forEachIndexed { i, n ->
-                                    FilterChip(selected = (i == 0) == cfg.dateAbove, onClick = { cfg = cfg.copy(dateAbove = i == 0) }, label = { Text(n) })
-                                }
-                            }
                             SectionTitle("Date format")
                             ChipRow {
                                 WidgetConfig.DATE_FORMATS.forEachIndexed { i, f ->

@@ -37,6 +37,7 @@ object WidgetRenderer {
         intArrayOf(R.layout.widget_f3_s0, R.layout.widget_f3_s1),
         intArrayOf(R.layout.widget_f4_s0, R.layout.widget_f4_s1),
         intArrayOf(R.layout.widget_f5_s0, R.layout.widget_f5_s1),
+        intArrayOf(R.layout.widget_f6_s0, R.layout.widget_f6_s1),
     )
 
     private val BG = intArrayOf(
