@@ -3,7 +3,10 @@
 package app.personal.clock.ui
 
 import android.os.SystemClock
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -166,7 +169,16 @@ private fun TimerCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(contentAlignment = Alignment.Center) {
+            // The ring is the play / pause button: tap it to start, pause or resume (disabled while reordering).
+            val statusText = if (running) "${(fraction * 100).toInt()}%" else if (t.state == TimerItem.PAUSED) "Paused" else "Ready"
+            val toggleLabel = if (running) "Pause" else if (t.state == TimerItem.PAUSED) "Resume" else "Start"
+            Box(
+                Modifier.size(76.dp).clip(CircleShape).clickable(enabled = !reorder) {
+                    if (running) TimerController.pause(ctx, t.id) else TimerController.start(ctx, t.id)
+                    onChange()
+                },
+                contentAlignment = Alignment.Center,
+            ) {
                 CircularProgressIndicator(
                     progress = { fraction },
                     modifier = Modifier.size(76.dp),
@@ -174,16 +186,17 @@ private fun TimerCard(
                     color = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                     trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 )
-                Text(
-                    if (running) "${(fraction * 100).toInt()}%" else if (t.state == TimerItem.PAUSED) "Paused" else "Ready",
-                    fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Icon(
+                    painterResource(if (running) R.drawable.ic_pause else R.drawable.ic_play),
+                    contentDescription = toggleLabel,
+                    modifier = Modifier.size(30.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = if (reorder) 0.4f else 1f),
                 )
             }
             // Time and label get the full middle width (they used to wrap when the buttons sat beside them).
             Column(Modifier.weight(1f)) {
                 Text(Fmt.clockHms(left), fontSize = 32.sp, fontWeight = FontWeight.Light, maxLines = 1, softWrap = false)
-                Hint(t.label.ifBlank { Fmt.clockHms(t.durationMs) + " timer" })
+                Hint(statusText + " \u00B7 " + t.label.ifBlank { Fmt.clockHms(t.durationMs) + " timer" })
                 if (reorder) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         MoveButton("\u25B2", "Move up", canUp) { onMove(-1) }
@@ -201,17 +214,6 @@ private fun TimerCard(
                             Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                         }
                     }
-                }
-            }
-            if (reorder) {
-                // no play/pause while reordering, so a tap cannot start a timer by accident
-            } else if (running) {
-                FilledTonalIconButton(onClick = { TimerController.pause(ctx, t.id); onChange() }, modifier = Modifier.size(52.dp)) {
-                    Icon(painterResource(R.drawable.ic_pause), contentDescription = "Pause")
-                }
-            } else {
-                FilledIconButton(onClick = { TimerController.start(ctx, t.id); onChange() }, modifier = Modifier.size(52.dp)) {
-                    Icon(painterResource(R.drawable.ic_play), contentDescription = if (t.state == TimerItem.PAUSED) "Resume" else "Start")
                 }
             }
         }
