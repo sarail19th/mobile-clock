@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
@@ -67,9 +68,12 @@ fun TimerScreen(onSettings: () -> Unit) {
     val tick by rememberTicker(250L)
     var version by remember { mutableIntStateOf(0) }
     var showCustom by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<TimerItem?>(null) }
+    var reorder by remember { mutableStateOf(false) }
     // Re-read each tick so a timer that just finished (state changed by the receiver) shows correctly.
     val timers = remember(tick, version) { store.timers() }
     val nowE = SystemClock.elapsedRealtime()
+    val inReorder = reorder && timers.size > 1
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("Timer", onSettings)
@@ -94,7 +98,12 @@ fun TimerScreen(onSettings: () -> Unit) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Text("  Custom timer", fontWeight = FontWeight.Bold)
             }
-            SectionTitle("Running", Modifier.padding(top = 6.dp))
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                SectionTitle("Your timers", Modifier.weight(1f))
+                if (timers.size > 1) {
+                    TextButton(onClick = { reorder = !reorder }) { Text(if (inReorder) "Done" else "Reorder") }
+                }
+            }
         }
         if (timers.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -106,19 +115,36 @@ fun TimerScreen(onSettings: () -> Unit) {
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(timers, key = { it.id }) { t ->
-                    TimerCard(t, nowE, onChange = { version++ })
+                itemsIndexed(timers, key = { _, t -> t.id }) { i, t ->
+                    TimerCard(
+                        t, nowE, onChange = { version++ },
+                        reorder = inReorder, canUp = i > 0, canDown = i < timers.size - 1,
+                        onMove = { d -> store.moveTimer(t.id, d); version++ },
+                        onEdit = { editing = t },
+                    )
                 }
             }
         }
     }
 
     if (showCustom) {
-        CustomTimerDialog(
+        TimerDialog(
+            initial = null,
             onDismiss = { showCustom = false },
-            onCreate = { ms, label ->
+            onConfirm = { ms, label ->
                 showCustom = false
                 TimerController.add(ctx, ms, label)
+                version++
+            },
+        )
+    }
+    editing?.let { e ->
+        TimerDialog(
+            initial = e,
+            onDismiss = { editing = null },
+            onConfirm = { ms, label ->
+                editing = null
+                TimerController.update(ctx, e.id, ms, label)
                 version++
             },
         )
@@ -126,7 +152,10 @@ fun TimerScreen(onSettings: () -> Unit) {
 }
 
 @Composable
-private fun TimerCard(t: TimerItem, nowE: Long, onChange: () -> Unit) {
+private fun TimerCard(
+    t: TimerItem, nowE: Long, onChange: () -> Unit,
+    reorder: Boolean, canUp: Boolean, canDown: Boolean, onMove: (Int) -> Unit, onEdit: () -> Unit,
+) {
     val ctx = LocalContext.current
     val left = t.remaining(nowE)
     val running = t.state == TimerItem.RUNNING
@@ -155,16 +184,28 @@ private fun TimerCard(t: TimerItem, nowE: Long, onChange: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(Fmt.clockHms(left), fontSize = 32.sp, fontWeight = FontWeight.Light, maxLines = 1, softWrap = false)
                 Hint(t.label.ifBlank { Fmt.clockHms(t.durationMs) + " timer" })
-                Row {
-                    IconButton(onClick = { TimerController.reset(ctx, t.id); onChange() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                if (reorder) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        MoveButton("\u25B2", "Move up", canUp) { onMove(-1) }
+                        MoveButton("\u25BC", "Move down", canDown) { onMove(1) }
                     }
-                    IconButton(onClick = { TimerController.delete(ctx, t.id); onChange() }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                } else {
+                    Row {
+                        IconButton(onClick = { TimerController.reset(ctx, t.id); onChange() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                        }
+                        IconButton(onClick = onEdit) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit")
+                        }
+                        IconButton(onClick = { TimerController.delete(ctx, t.id); onChange() }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             }
-            if (running) {
+            if (reorder) {
+                // no play/pause while reordering, so a tap cannot start a timer by accident
+            } else if (running) {
                 FilledTonalIconButton(onClick = { TimerController.pause(ctx, t.id); onChange() }, modifier = Modifier.size(52.dp)) {
                     Icon(painterResource(R.drawable.ic_pause), contentDescription = "Pause")
                 }
@@ -177,16 +218,18 @@ private fun TimerCard(t: TimerItem, nowE: Long, onChange: () -> Unit) {
     }
 }
 
+/** Create ([initial] = null) or edit a saved timer: length in h / min / sec and an optional label. */
 @Composable
-private fun CustomTimerDialog(onDismiss: () -> Unit, onCreate: (Long, String) -> Unit) {
-    var h by remember { mutableStateOf("") }
-    var m by remember { mutableStateOf("") }
-    var s by remember { mutableStateOf("") }
-    var label by remember { mutableStateOf("") }
+private fun TimerDialog(initial: TimerItem?, onDismiss: () -> Unit, onConfirm: (Long, String) -> Unit) {
+    val secs0 = (initial?.durationMs ?: 0L) / 1000L
+    var h by remember { mutableStateOf(if (secs0 >= 3600) (secs0 / 3600).toString() else "") }
+    var m by remember { mutableStateOf(if (secs0 >= 60) ((secs0 % 3600) / 60).toString() else "") }
+    var s by remember { mutableStateOf(if (secs0 % 60 > 0) (secs0 % 60).toString() else "") }
+    var label by remember { mutableStateOf(initial?.label ?: "") }
     val total = ((h.toLongOrNull() ?: 0L) * 3600 + (m.toLongOrNull() ?: 0L) * 60 + (s.toLongOrNull() ?: 0L)) * 1000L
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Custom timer") },
+        title = { Text(if (initial == null) "Custom timer" else "Edit timer") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -204,9 +247,12 @@ private fun CustomTimerDialog(onDismiss: () -> Unit, onCreate: (Long, String) ->
                     value = label, onValueChange = { label = it.take(30) }, label = { Text("Label (optional)") },
                     singleLine = true, modifier = Modifier.fillMaxWidth(),
                 )
+                if (initial != null && initial.state != TimerItem.IDLE) Hint("Saving resets this timer to Ready.")
             }
         },
-        confirmButton = { TextButton(enabled = total > 0, onClick = { onCreate(total, label.trim()) }) { Text("Start") } },
+        confirmButton = {
+            TextButton(enabled = total > 0, onClick = { onConfirm(total, label.trim()) }) { Text(if (initial == null) "Start" else "Save") }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

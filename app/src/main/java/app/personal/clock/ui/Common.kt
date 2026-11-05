@@ -18,6 +18,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.Icon
 import app.personal.clock.R
 import androidx.compose.foundation.layout.Arrangement
@@ -222,4 +225,19 @@ fun ChoiceChip(
             selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
         ),
     )
+}
+
+/** A small up/down arrow used to reorder things (widget lines, timers); greyed out at the end of the list. */
+@Composable
+fun MoveButton(glyph: String, description: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.size(40.dp).clip(CircleShape).clickable(enabled = enabled, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            glyph, fontSize = 15.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.25f),
+        )
+    }
 }

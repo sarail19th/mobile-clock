@@ -168,6 +168,17 @@ class Store private constructor(ctx: Context) {
         item
     }
 
+    /** Swaps a timer with its neighbour ([delta] = -1 up, +1 down); the list order is the display order. */
+    fun moveTimer(id: Int, delta: Int) = synchronized(LOCK) {
+        val list = readTimers().toMutableList()
+        val i = list.indexOfFirst { it.id == id }
+        val j = i + delta
+        if (i >= 0 && j >= 0 && j < list.size) {
+            val t = list[i]; list[i] = list[j]; list[j] = t
+            writeTimers(list)
+        }
+    }
+
     fun deleteTimer(id: Int) = synchronized(LOCK) { writeTimers(readTimers().filterNot { it.id == id }) }
 
     private fun writeTimers(list: List<TimerItem>) {

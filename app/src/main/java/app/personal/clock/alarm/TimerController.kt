@@ -51,6 +51,14 @@ object TimerController {
         disarm(ctx, id)
     }
 
+    /** Changes a saved timer's length and label. Saving always resets it to Ready (a running countdown is stopped). */
+    fun update(ctx: Context, id: Int, durationMs: Long, label: String) {
+        val store = Store.get(ctx)
+        val t = store.timer(id) ?: return
+        store.upsertTimer(t.copy(label = label, durationMs = durationMs, state = TimerItem.IDLE, remainingMs = durationMs, endElapsed = 0, endWall = 0))
+        disarm(ctx, id)
+    }
+
     fun delete(ctx: Context, id: Int) {
         disarm(ctx, id)
         Store.get(ctx).deleteTimer(id)

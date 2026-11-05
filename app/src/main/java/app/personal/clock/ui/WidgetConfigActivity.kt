@@ -522,21 +522,6 @@ private fun LineCard(
     }
 }
 
-/** A small up/down arrow used to reorder the lines; greyed out at the end of the list. */
-@Composable
-private fun MoveButton(glyph: String, description: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier.size(40.dp).clip(CircleShape).clickable(enabled = enabled, onClick = onClick)
-            .semantics { contentDescription = description },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            glyph, fontSize = 15.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.25f),
-        )
-    }
-}
-
 @Composable
 private fun ChipRow(content: @Composable () -> Unit) {
     // Wraps onto more lines instead of scrolling sideways.

@@ -77,6 +77,8 @@ holiday skip with calendar synced / disabled / permission denied.
 - Batch D (owner-confirmed on phone): (1) Analog + digital can reorder Time/Date/Next alarm too (`LayoutCaps.reorder`); (2) Alarm card layout: the Date switch now shows the real date (was the "Now" clock); (3) shared `ChoiceChip` (`ui/Common.kt`): selected = solid app colour + white text + tick, used by every option chip; alarm repeat days highlight solid, Weekdays/Every day/Once highlight when they match and wrap instead of breaking "Once"; (4) the widget editor's section tabs are an underline text tab bar whose labels ignore the phone's font scale, so all five always fit on one line.
 - Local checks (`tools/local-check`) could not run in the build session (Maven mirror HTTP 429); CI was the first compile.
 
+- Timers (built, owner check pending): the saved-timer list is headed "Your timers"; each card has a pencil (edit length/label via `TimerDialog`; saving resets the timer through `TimerController.update`) and a **Reorder** mode with up/down buttons (`Store.moveTimer`; list order = stored order). `MoveButton` lives in `ui/Common.kt`.
+
 ## 6. Known limits and honest caveats
 - `assets/th_holidays.json` was **compiled by hand, not from an official source**; entries marked `provisional` (2027 lunar/substitute days) are estimates. Refresh yearly (README reminder). Only Thailand has a built-in list; other countries rely on the phone's holiday calendar or custom days.
   To add a country: `assets/holidays_xx.json` in the same format, from an official source.
