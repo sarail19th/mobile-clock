@@ -5,6 +5,10 @@ package app.personal.clock.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,28 +61,27 @@ fun WidgetPanel(cfg: WidgetConfig, widthDp: Int, heightDp: Int, scale: Float, mi
     }
 }
 
-/** Big preview at the top of the editor, at the widget's current size. */
+/** Big preview at the top of the editor, at the widget's current size, on the chosen backdrop. */
 @Composable
-fun WidgetPreview(cfg: WidgetConfig, widthDp: Int, heightDp: Int, modifier: Modifier = Modifier) {
+fun WidgetPreview(cfg: WidgetConfig, widthDp: Int, heightDp: Int, backdrop: Backdrop, onBackdropClick: () -> Unit, modifier: Modifier = Modifier) {
     val tick by rememberTicker(60_000L)
     // Drawn at real size (so fitting is exact) then scaled down to leave room for the controls.
     val scale = (150f / heightDp).coerceIn(0.4f, 1f)
-    Box(
-        modifier.fillMaxWidth().height(((heightDp + 24) * scale).dp).clip(RoundedCornerShape(16.dp)).background(PreviewWallpaper),
-        contentAlignment = Alignment.Center,
-    ) {
+    BackdropBox(backdrop, modifier.fillMaxWidth().height(((heightDp + 24) * scale).dp)) {
         WidgetPanel(cfg, widthDp, heightDp, scale, tick / 60_000L)
+        // Small, always-visible button to change what the preview sits on.
+        Box(
+            Modifier.align(Alignment.TopEnd).padding(8.dp).clip(RoundedCornerShape(14.dp))
+                .background(Color(0x99000000)).clickable(onClick = onBackdropClick).padding(horizontal = 10.dp, vertical = 5.dp),
+        ) { Text("Background", color = Color.White, fontSize = 12.sp) }
     }
 }
 
 /** Fixed-size thumbnail of a template (rendered at the template's nominal widget size, scaled to fit the tile). */
 @Composable
-fun WidgetThumb(cfg: WidgetConfig, widthDp: Int, heightDp: Int, tileHeight: Dp, modifier: Modifier = Modifier) {
+fun WidgetThumb(cfg: WidgetConfig, widthDp: Int, heightDp: Int, tileHeight: Dp, backdrop: Backdrop, modifier: Modifier = Modifier) {
     val scale = (140f / widthDp).coerceAtMost((tileHeight.value - 16f) / heightDp).coerceIn(0.2f, 1f)
-    Box(
-        modifier.fillMaxWidth().height(tileHeight).clip(RoundedCornerShape(14.dp)).background(PreviewWallpaper),
-        contentAlignment = Alignment.Center,
-    ) {
+    BackdropBox(backdrop, modifier.fillMaxWidth().height(tileHeight), corner = 14.dp) {
         WidgetPanel(cfg, widthDp, heightDp, scale)
     }
 }

@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 
 package app.personal.clock.ui
 
@@ -10,8 +10,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.AlertDialog
@@ -149,12 +153,16 @@ private fun ConfigScreen(
     var cfg by remember { mutableStateOf(initial) }
     var note by remember { mutableStateOf<String?>(null) }
     var section by remember { mutableIntStateOf(if (startOnTemplates) 0 else 1) }
+    var backdrop by remember { mutableStateOf(BackdropStore.load(ctx)) }
+    var showBackdrop by remember { mutableStateOf(false) }
     val store = remember { Store.get(ctx) }
     val worldZones = remember { store.world() }
     val homeId = remember { store.settings().zone().id }
     val worldFallback = remember { worldZones.firstOrNull { it != homeId } ?: "Asia/Tokyo" }
     val custom = cfg.font != 0 || cfg.layout != WidgetConfig.LAYOUT_STACK
     val caps = LayoutCaps.of(cfg.layout)
+
+    if (showBackdrop) BackdropDialog(onChanged = { backdrop = it }, onDismiss = { showBackdrop = false })
 
     Scaffold(
         bottomBar = {
@@ -172,7 +180,7 @@ private fun ConfigScreen(
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                WidgetPreview(cfg, widthDp, heightDp)
+                WidgetPreview(cfg, widthDp, heightDp, backdrop, onBackdropClick = { showBackdrop = true })
             }
             // Section switcher: keeps every control within one short scroll.
             Row(
@@ -207,7 +215,7 @@ private fun ConfigScreen(
                                         border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
                                     ) {
                                         Column(Modifier.padding(8.dp)) {
-                                            WidgetThumb(preview, t.nominalW, t.nominalH, 104.dp)
+                                            WidgetThumb(preview, t.nominalW, t.nominalH, 104.dp, backdrop)
                                             Text(t.name, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
                                             Hint("${t.sizeLabel} \u00B7 ${t.blurb}", Modifier.padding(start = 4.dp, bottom = 4.dp))
                                         }
@@ -251,7 +259,7 @@ private fun ConfigScreen(
                         }
                         if (caps.accent) {
                             SectionTitle("Accent colour")
-                            ColorRow("Minute hand", cfg.accentColor, ACCENT_SWATCHES) { cfg = cfg.copy(accentColor = it) }
+                            ColorRow("Minute hand (tap Custom for any colour)", cfg.accentColor, ACCENT_SWATCHES) { cfg = cfg.copy(accentColor = it) }
                         }
                         SectionTitle("Time zone")
                         ChipRow {
@@ -406,7 +414,7 @@ private fun ConfigScreen(
                 OutlinedButton(
                     onClick = { onSaveDefault(cfg); note = "Saved as the default look for new widgets." },
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                ) { Text("Use this look as default for new widgets") }
+                ) { Text("Set Default") }
                 note?.let { Hint(it) }
                 Box(Modifier.size(16.dp))
             }
@@ -486,10 +494,11 @@ private fun ColorRow(label: String, current: Int, swatches: List<Long>, onPick: 
     val isCustom = swatches.none { (it.toInt() and 0xFFFFFF) == (current and 0xFFFFFF) }
     Column {
         Text(label, style = MaterialTheme.typography.bodyMedium)
-        Row(
-            Modifier.fillMaxWidth().padding(vertical = 4.dp).horizontalScroll(rememberScrollState()),
+        // All swatches are visible at once: they wrap onto a second line instead of scrolling sideways.
+        FlowRow(
+            Modifier.fillMaxWidth().padding(vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             swatches.forEach { argb ->
                 val c = argb.toInt()
@@ -500,28 +509,34 @@ private fun ColorRow(label: String, current: Int, swatches: List<Long>, onPick: 
                         .clickable { onPick(c) },
                 )
             }
-            // Rainbow button: opens the full colour picker. When the colour is not one of the swatches it shows it in the middle.
-            Box(
-                Modifier.size(34.dp).clip(CircleShape)
-                    .background(Brush.sweepGradient(listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red)))
-                    .border(if (isCustom) 3.dp else 1.dp, if (isCustom) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, CircleShape)
-                    .clickable { showPicker = true },
-                contentAlignment = Alignment.Center,
+            // "Custom": the rainbow circle opens the full colour picker. When the colour is not a swatch it shows it in the middle.
+            Row(
+                Modifier.clip(RoundedCornerShape(17.dp))
+                    .border(if (isCustom) 2.dp else 1.dp, if (isCustom) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(17.dp))
+                    .clickable { showPicker = true }.padding(end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(14.dp).clip(CircleShape).background(Color(current or (0xFF shl 24))).border(2.dp, Color.White, CircleShape))
+                Box(
+                    Modifier.size(34.dp).clip(CircleShape)
+                        .background(Brush.sweepGradient(listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red))),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(Modifier.size(14.dp).clip(CircleShape).background(Color(current or (0xFF shl 24))).border(2.dp, Color.White, CircleShape))
+                }
+                Text("Custom", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 8.dp))
             }
-            OutlinedTextField(
-                value = hex,
-                onValueChange = { v ->
-                    val clean = v.uppercase().filter { it in "0123456789ABCDEF" }.take(6)
-                    hex = clean
-                    if (clean.length == 6) onPick((0xFF000000 or clean.toLong(16)).toInt())
-                },
-                label = { Text("Hex") },
-                singleLine = true,
-                modifier = Modifier.size(width = 120.dp, height = 64.dp),
-            )
         }
+        OutlinedTextField(
+            value = hex,
+            onValueChange = { v ->
+                val clean = v.uppercase().filter { it in "0123456789ABCDEF" }.take(6)
+                hex = clean
+                if (clean.length == 6) onPick((0xFF000000 or clean.toLong(16)).toInt())
+            },
+            label = { Text("Hex code") },
+            singleLine = true,
+            modifier = Modifier.width(150.dp),
+        )
     }
     if (showPicker) {
         ColorPickerDialog(initial = current or (0xFF shl 24), onDismiss = { showPicker = false }, onPick = { onPick(it); showPicker = false })
@@ -555,7 +570,7 @@ private fun GradientBar(value: Float, colors: List<Color>, onChange: (Float) -> 
 
 /** Full colour picker: hue, saturation and brightness bars with a live preview, plus a hex box. */
 @Composable
-private fun ColorPickerDialog(initial: Int, onDismiss: () -> Unit, onPick: (Int) -> Unit) {
+fun ColorPickerDialog(initial: Int, onDismiss: () -> Unit, onPick: (Int) -> Unit) {
     val start = remember {
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(initial, hsv)
