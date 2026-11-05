@@ -13,3 +13,11 @@
 *.keystore
 keystore.properties
 *.b64
+
+# local-check harness: big/generated files
+tools/local-check/jars/
+tools/local-check/fwcheck/stubs/R.kt
+tools/local-check/**/build/
+tools/local-check/**/.gradle/
+
+.kotlin/
