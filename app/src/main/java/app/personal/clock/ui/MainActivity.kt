@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -72,13 +73,13 @@ class MainActivity : ComponentActivity() {
 
 private data class TabItem(val label: String, val icon: Int)
 
+// Five tabs; Settings is the gear in each screen's header (it frees room so labels never truncate).
 private val TAB_ITEMS = listOf(
     TabItem("Clock", R.drawable.ic_nav_clock),
     TabItem("Alarm", R.drawable.ic_nav_alarm),
     TabItem("Timer", R.drawable.ic_nav_timer),
     TabItem("Stopwatch", R.drawable.ic_nav_stopwatch),
     TabItem("World", R.drawable.ic_nav_world),
-    TabItem("Settings", R.drawable.ic_nav_settings),
 )
 
 @Composable
@@ -97,30 +98,38 @@ fun MainScreen(tab: Int, onTab: (Int) -> Unit) {
         }
     }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                TAB_ITEMS.forEachIndexed { i, item ->
-                    NavigationBarItem(
-                        selected = tab == i,
-                        onClick = { onTab(i) },
-                        icon = { Icon(painterResource(item.icon), contentDescription = item.label) },
-                        // Fixed size (not scaled by the system font size) so six labels always fit on one line.
-                        label = { Text(item.label, fontSize = labelSize, maxLines = 1, softWrap = false) },
-                        alwaysShowLabel = true,
-                    )
+    BackHandler(enabled = tab == Tabs.SETTINGS) { onTab(Tabs.CLOCK) }
+
+    if (tab == Tabs.SETTINGS) {
+        Scaffold { padding ->
+            Box(Modifier.padding(padding).fillMaxSize()) { SettingsScreen(onBack = { onTab(Tabs.CLOCK) }) }
+        }
+    } else {
+        val openSettings = { onTab(Tabs.SETTINGS) }
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    TAB_ITEMS.forEachIndexed { i, item ->
+                        NavigationBarItem(
+                            selected = tab == i,
+                            onClick = { onTab(i) },
+                            icon = { Icon(painterResource(item.icon), contentDescription = item.label) },
+                            // Fixed size (not scaled by the system font size) so every label always fits on one line.
+                            label = { Text(item.label, fontSize = labelSize, maxLines = 1, softWrap = false) },
+                            alwaysShowLabel = true,
+                        )
+                    }
                 }
-            }
-        },
-    ) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize()) {
-            when (tab) {
-                Tabs.CLOCK -> ClockScreen()
-                Tabs.ALARM -> AlarmScreen()
-                Tabs.TIMER -> TimerScreen()
-                Tabs.STOPWATCH -> StopwatchScreen()
-                Tabs.WORLD -> WorldScreen()
-                else -> SettingsScreen()
+            },
+        ) { padding ->
+            Box(Modifier.padding(padding).fillMaxSize()) {
+                when (tab) {
+                    Tabs.CLOCK -> ClockScreen(openSettings)
+                    Tabs.ALARM -> AlarmScreen(openSettings)
+                    Tabs.TIMER -> TimerScreen(openSettings)
+                    Tabs.STOPWATCH -> StopwatchScreen(openSettings)
+                    else -> WorldScreen(openSettings)
+                }
             }
         }
     }

@@ -103,6 +103,18 @@ data class WidgetConfig(
     val paddingDp: Int = 12,
     val textColor: Int = 0xFFFFFFFF.toInt(),
     val dateColor: Int = 0xFFD0D4DC.toInt(),
+    /** Size of the date line (sp). */
+    val dateSizeSp: Int = 18,
+    /** Next-alarm line: its own size and colour. */
+    val alarmSizeSp: Int = 15,
+    val alarmColor: Int = 0xFFD0D4DC.toInt(),
+    /** Second (world) clock line: its own size and colour for the label. */
+    val worldSizeSp: Int = 14,
+    val worldColor: Int = 0xFFD0D4DC.toInt(),
+    /** Second accent: minute hand on analog faces. */
+    val accentColor: Int = 0xFF9FC2FF.toInt(),
+    /** One of the LAYOUT_* constants: how the pieces are arranged. */
+    val layout: Int = LAYOUT_STACK,
     val use24h: Boolean = true,
     val showAmPm: Boolean = true,
     val leadingZero: Boolean = true,
@@ -123,6 +135,8 @@ data class WidgetConfig(
         .put("bgMode", bgMode).put("bgColor", bgColor).put("bgOpacity", bgOpacity)
         .put("cornerStep", cornerStep).put("paddingDp", paddingDp)
         .put("textColor", textColor).put("dateColor", dateColor)
+        .put("dateSizeSp", dateSizeSp).put("alarmSizeSp", alarmSizeSp).put("alarmColor", alarmColor)
+        .put("worldSizeSp", worldSizeSp).put("worldColor", worldColor).put("accentColor", accentColor).put("layout", layout)
         .put("use24h", use24h).put("showAmPm", showAmPm).put("leadingZero", leadingZero)
         .put("showDate", showDate).put("dateFormat", dateFormat).put("dateAbove", dateAbove)
         .put("showNextAlarm", showNextAlarm).put("showWorld", showWorld).put("worldZone", worldZone)
@@ -136,6 +150,14 @@ data class WidgetConfig(
         const val BG_SOLID = 0
         const val BG_TRANSPARENT = 1
         const val BG_FROSTED = 2
+
+        const val LAYOUT_STACK = 0
+        const val LAYOUT_ROW = 1
+        const val LAYOUT_DUAL = 2
+        const val LAYOUT_ANALOG = 3
+        const val LAYOUT_ANALOG_DIGITAL = 4
+        const val LAYOUT_ALARM_CARD = 5
+        const val LAYOUT_DATE_FIRST = 6
 
         const val TAP_APP = 0
         const val TAP_ALARMS = 1
@@ -163,6 +185,13 @@ data class WidgetConfig(
                 paddingDp = o.optInt("paddingDp", d.paddingDp).coerceIn(0, 40),
                 textColor = o.optInt("textColor", d.textColor),
                 dateColor = o.optInt("dateColor", d.dateColor),
+                dateSizeSp = o.optInt("dateSizeSp", d.dateSizeSp).coerceIn(8, 60),
+                alarmSizeSp = o.optInt("alarmSizeSp", d.alarmSizeSp).coerceIn(8, 60),
+                alarmColor = o.optInt("alarmColor", o.optInt("dateColor", d.alarmColor)),
+                worldSizeSp = o.optInt("worldSizeSp", d.worldSizeSp).coerceIn(8, 60),
+                worldColor = o.optInt("worldColor", o.optInt("dateColor", d.worldColor)),
+                accentColor = o.optInt("accentColor", d.accentColor),
+                layout = o.optInt("layout", d.layout).coerceIn(0, LAYOUT_DATE_FIRST),
                 use24h = o.optBoolean("use24h", d.use24h),
                 showAmPm = o.optBoolean("showAmPm", d.showAmPm),
                 leadingZero = o.optBoolean("leadingZero", d.leadingZero),

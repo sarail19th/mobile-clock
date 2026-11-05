@@ -24,6 +24,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.foundation.background
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Warning
@@ -79,7 +85,7 @@ private data class Health(
 )
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val store = remember { Store.get(ctx) }
     var settings by remember { mutableStateOf(store.settings()) }
@@ -100,6 +106,9 @@ fun SettingsScreen() {
         HolidayChecker.clearCache()
         refresh++
     }
+    // Recomputed whenever `refresh` changes, i.e. after returning from a system settings page.
+    val healthList = remember(refresh) { healthItems(ctx, onRequest = { permLauncher.launch(it) }) }
+
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) {
             message = runCatching {
@@ -126,7 +135,11 @@ fun SettingsScreen() {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text("Settings", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 8.dp))
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            FilledTonalIconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
+            Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        }
+        HealthSummary(healthList)
         message?.let {
             Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -171,8 +184,7 @@ fun SettingsScreen() {
         }
 
         SettingsCard("Permission health") {
-            // Recomputed whenever `refresh` changes, i.e. after returning from a system settings page.
-            val items = remember(refresh) { healthItems(ctx, onRequest = { permLauncher.launch(it) }) }
+            val items = healthList
             items.forEachIndexed { i, h ->
                 HealthRow(h)
                 if (i < items.lastIndex) HorizontalDivider()
@@ -213,6 +225,44 @@ fun SettingsScreen() {
             Hint("Widget fonts: Clean (DM Sans), Rounded (Nunito), Cute (Fredoka), Soft (Quicksand), Mono (JetBrains Mono), Serif (Playfair Display), Condensed (Barlow Condensed), Thin (Poppins), all under the SIL Open Font License 1.1 (see /licenses in the source). \"System\" uses your phone's own font.")
         }
         Column(Modifier.padding(bottom = 24.dp)) {}
+    }
+}
+
+@Composable
+private fun HealthSummary(items: List<Health>) {
+    val failing = items.filter { !it.ok && !it.optional }
+    val okCount = items.count { it.ok }
+    val good = failing.isEmpty()
+    Card(
+        Modifier.fillMaxWidth().padding(top = 12.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = if (good) Color(0xFFE0F2E6) else Color(0xFFFFF1D6)),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(
+                    if (good) Icons.Default.Check else Icons.Default.Warning, contentDescription = null,
+                    tint = if (good) Color(0xFF17683A) else Color(0xFF7A4A00),
+                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (good) "All set: alarms should ring" else "Alarms may not ring: fix ${failing.size}",
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFF1B1B1B),
+                    )
+                    Text("$okCount of ${items.size} checks are OK", fontSize = 13.sp, color = Color(0xFF3A3A3A))
+                }
+            }
+            failing.take(3).forEach { h ->
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                        .background(Color.White).padding(start = 14.dp, top = 4.dp, bottom = 4.dp, end = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(h.title, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1B1B1B))
+                    OutlinedButton(onClick = h.onFix) { Text(h.action) }
+                }
+            }
+        }
     }
 }
 

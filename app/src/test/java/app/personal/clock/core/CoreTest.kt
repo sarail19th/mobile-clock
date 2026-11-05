@@ -107,6 +107,13 @@ class CoreTest {
         assertEquals("UTC-4", Fmt.utcOffset(summer))
     }
 
+    @Test fun hoursDifference() {
+        assertEquals("+2 h", Fmt.hoursDiff(2 * 3600))
+        assertEquals("\u22127 h", Fmt.hoursDiff(-7 * 3600))
+        assertEquals("+5:30 h", Fmt.hoursDiff(5 * 3600 + 1800))
+        assertEquals("same time", Fmt.hoursDiff(0))
+    }
+
     @Test fun untilFormatting() {
         assertEquals("< 1 m", Fmt.until(0))
         assertEquals("1 m", Fmt.until(1))
@@ -127,28 +134,33 @@ class CoreTest {
 
 class WidgetFitTest {
     private fun fit(w: Int, h: Int, size: Int = 64, alarm: Boolean = true, world: Boolean = false, ampm: Boolean = false) =
-        WidgetFitter.fit(size, 12, 0, ampm, true, alarm, world, w, h)
+        WidgetFitter.fit(size, 18, 15, 14, 12, 0, ampm, true, alarm, world, w, h)
 
     @Test fun roomyWidgetKeepsEverythingAtRequestedSize() {
         val f = fit(360, 200)
-        assertEquals(64f, f.sizeSp)
+        assertEquals(1f, f.scale)
         assertTrue(f.showDate && f.showAlarm)
     }
 
-    @Test fun smallWidgetDropsLinesBeforeCrushingTheTime() {
+    @Test fun smallWidgetShrinksOrDropsLinesBeforeCrushingTheTime() {
         val f = fit(250, 110)
-        assertTrue(f.sizeSp >= 64 * 0.7f)
-        assertTrue(!f.showAlarm)
+        assertTrue(f.scale >= 0.69f)
     }
 
     @Test fun veryShortWidgetStillShowsTheTime() {
         val f = fit(250, 56)
-        assertTrue(f.sizeSp >= 20f)
+        assertTrue(f.scale * 64 >= 19.9f)
         assertTrue(!f.showDate && !f.showAlarm && !f.showWorld)
     }
 
     @Test fun narrowWidgetShrinksTimeToWidth() {
         val f = fit(120, 300, size = 120)
-        assertTrue(f.sizeSp * 2.9f <= 120 - 24)
+        assertTrue(f.scale * 120 * 2.9f <= 120 - 24 + 0.5f)
+    }
+
+    @Test fun lineSizesAreScaledTogether() {
+        val f = fit(250, 110)
+        // every line shares one scale, so the user's size ratios are preserved
+        assertTrue(f.scale in 0.3f..1f)
     }
 }

@@ -2,7 +2,6 @@ package app.personal.clock.widget
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
-import android.graphics.Typeface
 import android.util.SizeF
 import android.util.TypedValue
 import android.view.Gravity
@@ -38,12 +37,6 @@ object WidgetRenderer {
     /** [shadow] -> layout (the system-font TextClock layout; it also holds the bitmap view). */
     private val LAYOUTS = intArrayOf(R.layout.widget_f0_s0, R.layout.widget_f0_s1)
 
-    /** Typeface per font index; 0 = the phone's own font. */
-    private val FONT_RES = intArrayOf(
-        0, R.font.dm_sans, R.font.nunito, R.font.fredoka, R.font.quicksand,
-        R.font.jetbrains_mono, R.font.playfair_display, R.font.barlow_condensed, R.font.poppins_thin,
-    )
-
     private val BG = intArrayOf(
         R.drawable.widget_bg_r0, R.drawable.widget_bg_r1, R.drawable.widget_bg_r2, R.drawable.widget_bg_r3,
         R.drawable.widget_bg_r4, R.drawable.widget_bg_r5, R.drawable.widget_bg_r6, R.drawable.widget_bg_r7,
@@ -63,7 +56,7 @@ object WidgetRenderer {
     fun initialLayout(): Int = LAYOUTS[0]
 
     /** True when this config is drawn as a bitmap (needs the per-minute refresh). */
-    fun usesBitmap(cfg: WidgetConfig): Boolean = cfg.font != 0
+    fun usesBitmap(cfg: WidgetConfig): Boolean = cfg.font != 0 || cfg.layout != WidgetConfig.LAYOUT_STACK
 
     /** The widget's time zone id as TextClock wants it. */
     fun clockZone(cfg: WidgetConfig, settings: AppSettings): String =
@@ -118,20 +111,22 @@ object WidgetRenderer {
         val density = ctx.resources.displayMetrics.density
         val rv = RemoteViews(ctx.packageName, LAYOUTS[if (cfg.shadow) 1 else 0])
 
-        val alarmText = if (cfg.showNextAlarm) nextAlarmText(ctx, cfg) else null
-        val worldText = if (cfg.showWorld && cfg.worldZone.isNotBlank()) worldLabel(cfg.worldZone) else null
-        val showAmPm = !cfg.use24h && cfg.showAmPm
-        val fit = WidgetFitter.fit(
-            wantedSp = cfg.sizeSp, paddingDp = cfg.paddingDp, font = cfg.font, showAmPm = showAmPm,
-            wantDate = cfg.showDate, wantAlarm = alarmText != null, wantWorld = worldText != null,
-            widthDp = wDp, heightDp = hDp,
-        )
-        val tz = clockZone(cfg, settings)
-
         if (usesBitmap(cfg)) {
-            bindBitmap(ctx, rv, cfg, fit, tz, alarmText, worldText, showAmPm, wDp, hDp)
+            val bmp = WidgetScene.render(ctx, cfg, wDp, hDp)
+            rv.setViewVisibility(R.id.w_content, View.GONE)
+            rv.setViewVisibility(R.id.w_bitmap, View.VISIBLE)
+            rv.setImageViewBitmap(R.id.w_bitmap, bmp)
         } else {
-            bindTextClocks(rv, cfg, fit, tz, alarmText, worldText, showAmPm)
+            val alarmText = if (cfg.showNextAlarm) nextAlarmText(ctx, cfg) else null
+            val worldText = if (cfg.showWorld && cfg.worldZone.isNotBlank()) worldLabel(cfg.worldZone) else null
+            val showAmPm = !cfg.use24h && cfg.showAmPm
+            val fit = WidgetFitter.fit(
+                timeSp = cfg.sizeSp, dateSp = cfg.dateSizeSp, alarmSp = cfg.alarmSizeSp, worldSp = cfg.worldSizeSp,
+                paddingDp = cfg.paddingDp, font = cfg.font, showAmPm = showAmPm,
+                wantDate = cfg.showDate, wantAlarm = alarmText != null, wantWorld = worldText != null,
+                widthDp = wDp, heightDp = hDp,
+            )
+            bindTextClocks(rv, cfg, fit, clockZone(cfg, settings), alarmText, worldText, showAmPm)
             val pad = (cfg.paddingDp * density).toInt()
             rv.setViewPadding(R.id.w_content, pad, pad, pad, pad)
         }
@@ -145,62 +140,14 @@ object WidgetRenderer {
         return rv
     }
 
-    // ------------------------------------------------------------------ bitmap mode (custom fonts)
-
-    private fun bindBitmap(
-        ctx: Context, rv: RemoteViews, cfg: WidgetConfig, fit: WidgetFit, tz: String,
-        alarmText: String?, worldText: String?, showAmPm: Boolean, wDp: Int, hDp: Int,
-    ) {
-        val zone = runCatching { ZoneId.of(tz) }.getOrDefault(ZoneId.systemDefault())
-        val now = Instant.now().atZone(zone)
-        val loc = Locale.getDefault()
-        val timeFmt = if (cfg.use24h) (if (cfg.leadingZero) "HH:mm" else "H:mm") else (if (cfg.leadingZero) "hh:mm" else "h:mm")
-        val time = now.format(DateTimeFormatter.ofPattern(timeFmt, loc))
-        val ampm = now.format(DateTimeFormatter.ofPattern("a", loc))
-        val dateText = now.format(
-            DateTimeFormatter.ofPattern(WidgetConfig.DATE_FORMATS[cfg.dateFormat.coerceIn(0, WidgetConfig.DATE_FORMATS.size - 1)], loc),
-        )
-
-        val lines = ArrayList<WidgetBitmap.Line>()
-        val dateLine = WidgetBitmap.Line(listOf(WidgetBitmap.Part(dateText, fit.subSp, cfg.dateColor)))
-        if (fit.showDate && cfg.dateAbove) lines += dateLine
-        lines += WidgetBitmap.Line(
-            listOfNotNull(
-                WidgetBitmap.Part(time, fit.sizeSp, cfg.textColor),
-                if (showAmPm) WidgetBitmap.Part(ampm, fit.ampmSp, cfg.textColor, gapDp = 4f) else null,
-            ),
-        )
-        if (fit.showDate && !cfg.dateAbove) lines += dateLine
-        if (fit.showAlarm && alarmText != null) {
-            lines += WidgetBitmap.Line(listOf(WidgetBitmap.Part(alarmText, fit.subSp * 0.9f, cfg.dateColor)))
-        }
-        if (fit.showWorld && worldText != null) {
-            val wz = runCatching { ZoneId.of(cfg.worldZone) }.getOrNull()
-            val wt = wz?.let { Instant.now().atZone(it).format(DateTimeFormatter.ofPattern(if (cfg.use24h) "HH:mm" else "h:mm a", loc)) }.orEmpty()
-            lines += WidgetBitmap.Line(
-                listOf(
-                    WidgetBitmap.Part(worldText, fit.subSp * 0.9f, cfg.dateColor),
-                    WidgetBitmap.Part(wt, fit.subSp * 0.9f, cfg.textColor, gapDp = 6f),
-                ),
-            )
-        }
-
-        val typeface = runCatching { ctx.resources.getFont(FONT_RES[cfg.font.coerceIn(0, FONT_RES.size - 1)]) }
-            .getOrDefault(Typeface.DEFAULT)
-        val bmp = WidgetBitmap.render(ctx, cfg, typeface, wDp, hDp, lines)
-        rv.setViewVisibility(R.id.w_content, View.GONE)
-        rv.setViewVisibility(R.id.w_bitmap, View.VISIBLE)
-        rv.setImageViewBitmap(R.id.w_bitmap, bmp)
-    }
-
     // ------------------------------------------------------------------ live clock mode (System font)
 
     private fun bindTextClocks(
         rv: RemoteViews, cfg: WidgetConfig, fit: WidgetFit, tz: String,
         alarmText: String?, worldText: String?, showAmPm: Boolean,
     ) {
-        val size = fit.sizeSp
-        val subSize = fit.subSp
+        val k = fit.scale
+        val size = cfg.sizeSp * k
         rv.setViewVisibility(R.id.w_bitmap, View.GONE)
 
         val timeFmt = if (cfg.use24h) {
@@ -217,7 +164,7 @@ object WidgetRenderer {
         rv.setViewVisibility(R.id.w_ampm, if (showAmPm) View.VISIBLE else View.GONE)
         if (showAmPm) {
             rv.setString(R.id.w_ampm, "setTimeZone", tz)
-            rv.setTextViewTextSize(R.id.w_ampm, TypedValue.COMPLEX_UNIT_SP, fit.ampmSp)
+            rv.setTextViewTextSize(R.id.w_ampm, TypedValue.COMPLEX_UNIT_SP, (size * 0.32f).coerceAtLeast(12f))
             rv.setTextColor(R.id.w_ampm, cfg.textColor)
         }
 
@@ -231,27 +178,27 @@ object WidgetRenderer {
             rv.setCharSequence(dateId, "setFormat12Hour", fmt)
             rv.setCharSequence(dateId, "setFormat24Hour", fmt)
             rv.setString(dateId, "setTimeZone", tz)
-            rv.setTextViewTextSize(dateId, TypedValue.COMPLEX_UNIT_SP, subSize)
+            rv.setTextViewTextSize(dateId, TypedValue.COMPLEX_UNIT_SP, cfg.dateSizeSp * k)
             rv.setTextColor(dateId, cfg.dateColor)
         }
 
         rv.setViewVisibility(R.id.w_alarm, if (fit.showAlarm) View.VISIBLE else View.GONE)
         if (fit.showAlarm) {
             rv.setTextViewText(R.id.w_alarm, alarmText)
-            rv.setTextViewTextSize(R.id.w_alarm, TypedValue.COMPLEX_UNIT_SP, subSize * 0.9f)
-            rv.setTextColor(R.id.w_alarm, cfg.dateColor)
+            rv.setTextViewTextSize(R.id.w_alarm, TypedValue.COMPLEX_UNIT_SP, cfg.alarmSizeSp * k)
+            rv.setTextColor(R.id.w_alarm, cfg.alarmColor)
         }
 
         rv.setViewVisibility(R.id.w_world_row, if (fit.showWorld) View.VISIBLE else View.GONE)
         if (fit.showWorld) {
             rv.setTextViewText(R.id.w_world_label, worldText)
-            rv.setTextViewTextSize(R.id.w_world_label, TypedValue.COMPLEX_UNIT_SP, subSize * 0.9f)
-            rv.setTextColor(R.id.w_world_label, cfg.dateColor)
+            rv.setTextViewTextSize(R.id.w_world_label, TypedValue.COMPLEX_UNIT_SP, cfg.worldSizeSp * k)
+            rv.setTextColor(R.id.w_world_label, cfg.worldColor)
             val wf = if (cfg.use24h) "HH:mm" else "h:mm a"
             rv.setCharSequence(R.id.w_world_time, "setFormat12Hour", wf)
             rv.setCharSequence(R.id.w_world_time, "setFormat24Hour", wf)
             rv.setString(R.id.w_world_time, "setTimeZone", cfg.worldZone)
-            rv.setTextViewTextSize(R.id.w_world_time, TypedValue.COMPLEX_UNIT_SP, subSize * 0.9f)
+            rv.setTextViewTextSize(R.id.w_world_time, TypedValue.COMPLEX_UNIT_SP, cfg.worldSizeSp * k)
             rv.setTextColor(R.id.w_world_time, cfg.textColor)
         }
 

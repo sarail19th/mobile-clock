@@ -4,6 +4,18 @@ package app.personal.clock.ui
 
 import android.media.RingtoneManager
 import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import app.personal.clock.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -128,3 +140,51 @@ fun ringtoneTitle(ctx: android.content.Context, uri: String?): String = when {
     uri.isEmpty() -> "Silent (vibrate only)"
     else -> runCatching { RingtoneManager.getRingtone(ctx, Uri.parse(uri)).getTitle(ctx) }.getOrDefault("Custom sound")
 }
+
+// ---------------------------------------------------------------- shared building blocks
+
+/** Title row used by every tab: big title, settings gear on the right. */
+@Composable
+fun ScreenHeader(title: String, onSettings: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        FilledTonalIconButton(onClick = onSettings) {
+            Icon(painterResource(R.drawable.ic_nav_settings), contentDescription = "Settings")
+        }
+    }
+}
+
+/** A small rounded label. */
+@Composable
+fun Pill(text: String, container: Color, content: Color, modifier: Modifier = Modifier) {
+    Box(modifier.clip(RoundedCornerShape(16.dp)).background(container).padding(horizontal = 12.dp, vertical = 6.dp)) {
+        Text(text, color = content, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+    }
+}
+
+/** Seven small day dots (Mon..Sun): filled = the alarm repeats that day. */
+@Composable
+fun DayDots(mask: Int, modifier: Modifier = Modifier) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        listOf("M", "T", "W", "T", "F", "S", "S").forEachIndexed { i, ch ->
+            val on = mask and (1 shl i) != 0
+            Box(
+                Modifier.size(24.dp).clip(CircleShape)
+                    .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    ch, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                    color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** True during local daytime (06:00-18:00): used for the sun/moon icon and the day/night strip. */
+fun isDaytime(hour: Int): Boolean = hour in 6..17

@@ -132,6 +132,20 @@ object AlarmScheduler {
         ClockWidgetProvider.updateAll(ctx)
     }
 
+    /** The next public holiday that one of the enabled, skip-enabled alarms would have rung on (for the Alarm tab header). */
+    fun nextSkip(ctx: Context): Pair<java.time.LocalDate, String>? {
+        val store = Store.get(ctx)
+        val alarms = store.alarms().filter { it.enabled && it.skipHolidays && !it.isOneShot }
+        if (alarms.isEmpty()) return null
+        val today = java.time.LocalDate.now(store.settings().zone())
+        for (i in 0..365) {
+            val d = today.plusDays(i.toLong())
+            val name = HolidayChecker.check(ctx, d).name ?: continue
+            if (alarms.any { it.runsOn(d.dayOfWeek) }) return d to name
+        }
+        return null
+    }
+
     /** The alarm that will actually ring next (holiday-aware), for the Alarm tab header and the widget. */
     fun nextOverall(ctx: Context): NextInfo? {
         val store = Store.get(ctx)

@@ -24,16 +24,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -42,7 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimeInput
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -53,11 +54,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.personal.clock.R
 import app.personal.clock.alarm.AlarmScheduler
 import app.personal.clock.core.AlarmItem
 import app.personal.clock.core.Fmt
@@ -66,7 +68,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun AlarmScreen() {
+fun AlarmScreen(onSettings: () -> Unit) {
     val ctx = LocalContext.current
     val store = remember { Store.get(ctx) }
     val is24 = DateFormat.is24HourFormat(ctx)
@@ -82,50 +84,71 @@ fun AlarmScreen() {
     }
 
     val next = remember(tick, version) { AlarmScheduler.nextOverall(ctx) }
+    val skip = remember(version) { AlarmScheduler.nextSkip(ctx) }
     val zone = remember(version) { store.settings().zone() }
 
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(
-            Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            item {
-                Column(Modifier.padding(bottom = 8.dp)) {
-                    if (next != null) {
-                        val untilMs = next.at.toInstant().toEpochMilli() - tick
-                        Text("Next alarm in ${Fmt.until(untilMs)}", style = MaterialTheme.typography.headlineSmall)
-                        val whenText = next.at.format(
-                            DateTimeFormatter.ofPattern(if (is24) "EEE d MMM, HH:mm" else "EEE d MMM, h:mm a", Locale.getDefault()),
-                        )
-                        Hint("$whenText · ${next.alarm.label.ifBlank { "Alarm" }}")
-                        val skipped = next.skipped.firstOrNull()
-                        if (skipped != null) {
-                            val more = if (next.skipped.size > 1) " (+${next.skipped.size - 1} more)" else ""
-                            Hint("Skipping ${skipped.name} on ${skipped.date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))}$more")
+        Column(Modifier.fillMaxSize()) {
+            ScreenHeader("Alarm", onSettings)
+            LazyColumn(
+                Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    // Summary card: when the next alarm rings, and the next holiday that will be skipped.
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    ) {
+                        Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
+                            if (next != null) {
+                                val untilMs = next.at.toInstant().toEpochMilli() - tick
+                                Text("Next alarm", fontSize = 13.sp)
+                                Text("in ${Fmt.until(untilMs)}", fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    next.at.format(DateTimeFormatter.ofPattern(if (is24) "EEE d MMM · HH:mm" else "EEE d MMM · h:mm a", Locale.getDefault())) +
+                                        " · " + next.alarm.label.ifBlank { "Alarm" },
+                                    fontSize = 14.sp,
+                                )
+                            } else {
+                                Text("No alarm set", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                                Text("Turn an alarm on or add a new one.", fontSize = 14.sp)
+                            }
+                            skip?.let { (date, name) ->
+                                Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(painterResource(R.drawable.ic_calendar), contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Text(
+                                        "  Next skip: " + date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())) + " · " + name,
+                                        fontSize = 12.sp,
+                                    )
+                                }
+                            }
                         }
-                    } else {
-                        Text("No alarm set", style = MaterialTheme.typography.headlineSmall)
                     }
                     Hint(
                         "Alarms ring on ${Fmt.cityName(zone.id)} time (${Fmt.utcOffset(zone.rules.getOffset(java.time.Instant.ofEpochMilli(tick)).totalSeconds)})" +
                             if (store.settings().followPhoneZone) ", following the phone" else "",
-                        Modifier.padding(top = 2.dp),
+                        Modifier.padding(top = 8.dp, start = 4.dp),
+                    )
+                }
+                items(alarms, key = { it.id }) { a ->
+                    AlarmRow(
+                        a, is24,
+                        onToggle = { on ->
+                            store.upsertAlarm(a.copy(enabled = on))
+                            refresh()
+                        },
+                        onClick = { editing = a },
                     )
                 }
             }
-            items(alarms, key = { it.id }) { a ->
-                AlarmRow(
-                    a, is24,
-                    onToggle = { on ->
-                        store.upsertAlarm(a.copy(enabled = on))
-                        refresh()
-                    },
-                    onClick = { editing = a },
-                )
-            }
         }
-        FloatingActionButton(
+        ExtendedFloatingActionButton(
             onClick = {
                 val s = store.settings()
                 editing = AlarmItem(
@@ -133,8 +156,10 @@ fun AlarmScreen() {
                     snoozeMinutes = s.defaultSnoozeMinutes, skipHolidays = true,
                 )
             },
+            icon = { Icon(Icons.Default.Add, contentDescription = null) },
+            text = { Text("New alarm") },
             modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
-        ) { Icon(Icons.Default.Add, contentDescription = "Add alarm") }
+        )
     }
 
     val e = editing
@@ -164,27 +189,31 @@ fun AlarmScreen() {
 
 @Composable
 private fun AlarmRow(a: AlarmItem, is24: Boolean, onToggle: (Boolean) -> Unit, onClick: () -> Unit) {
-    val alpha = if (a.enabled) 1f else 0.5f
+    val alpha = if (a.enabled) 1f else 0.55f
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     formatHm(a.hour, a.minute, is24),
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Light,
+                    fontSize = 38.sp, fontWeight = FontWeight.Light,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                 )
                 Text(
-                    listOf(a.label.ifBlank { "Alarm" }, daysSummary(a.days)).joinToString(" · "),
-                    style = MaterialTheme.typography.bodyMedium,
+                    a.label.ifBlank { "Alarm" } + if (a.isOneShot) " · Once" else "",
+                    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                 )
+                if (!a.isOneShot) DayDots(a.days)
                 if (a.skipHolidays && !a.isOneShot) {
-                    Hint("Skips Thai public holidays")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(painterResource(R.drawable.ic_calendar), contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("  Skips Thai holidays", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
             Switch(checked = a.enabled, onCheckedChange = onToggle)
@@ -193,6 +222,22 @@ private fun AlarmRow(a: AlarmItem, is24: Boolean, onToggle: (Boolean) -> Unit, o
 }
 
 // ------------------------------------------------------------------ editor
+
+@Composable
+private fun SettingRow(title: String, subtitle: String? = null, onClick: (() -> Unit)? = null, trailing: @Composable () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            if (subtitle != null) Hint(subtitle)
+        }
+        trailing()
+    }
+}
 
 @Composable
 private fun AlarmEditor(
@@ -226,70 +271,81 @@ private fun AlarmEditor(
         }
     }
 
+    fun launchPicker() {
+        val i = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
+            putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
+            val current: Uri? = when (ringtone) {
+                null -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                "" -> null
+                else -> Uri.parse(ringtone)
+            }
+            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, current)
+        }
+        picker.launch(i)
+    }
+
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(if (alarm.id == 0) "New alarm" else "Edit alarm", style = MaterialTheme.typography.titleLarge)
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TimePicker(state = timeState) }
-
-        OutlinedTextField(
-            value = label, onValueChange = { label = it.take(40) },
-            label = { Text("Label") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+        Text(if (alarm.id == 0) "New alarm" else "Edit alarm", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TimeInput(state = timeState) }
+        Hint(
+            if (days == 0) "Rings once, at the next ${"%02d:%02d".format(timeState.hour, timeState.minute)}."
+            else "Rings at ${"%02d:%02d".format(timeState.hour, timeState.minute)} · ${daysSummary(days)}",
         )
 
-        Text("Repeat", style = MaterialTheme.typography.titleSmall)
+        SectionTitle("Repeat", Modifier.padding(top = 0.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf("M", "T", "W", "T", "F", "S", "S").forEachIndexed { i, ch ->
                 val on = days and (1 shl i) != 0
-                Box(
-                    Modifier.size(42.dp).clip(CircleShape)
-                        .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
-                        .clickable { days = days xor (1 shl i) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        ch,
-                        color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Medium,
+                FilterChip(
+                    selected = on,
+                    onClick = { days = days xor (1 shl i) },
+                    label = { Text(ch, fontWeight = FontWeight.Bold) },
+                    modifier = Modifier.size(width = 44.dp, height = 40.dp),
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AssistChip(onClick = { days = AlarmItem.WEEKDAYS }, label = { Text("Weekdays") })
+            AssistChip(onClick = { days = 0x7F }, label = { Text("Every day") })
+            AssistChip(onClick = { days = 0 }, label = { Text("Once") })
+        }
+
+        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+            Column {
+                Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    OutlinedTextField(
+                        value = label, onValueChange = { label = it.take(40) },
+                        label = { Text("Label") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                     )
                 }
-            }
-        }
-        Hint(if (days == 0) "No day selected: rings once at the next ${"%02d:%02d".format(timeState.hour, timeState.minute)}." else daysSummary(days))
-
-        LabeledRow("Skip Thai public holidays") { Switch(checked = skip, onCheckedChange = { skip = it }, enabled = days != 0) }
-        LabeledRow("Vibrate") { Switch(checked = vibrate, onCheckedChange = { vibrate = it }) }
-
-        LabeledRow("Snooze: $snooze min") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = { snooze = (snooze - 1).coerceAtLeast(1) }) { Text("−") }
-                Box(Modifier.size(8.dp))
-                OutlinedButton(onClick = { snooze = (snooze + 1).coerceAtMost(60) }) { Text("+") }
-            }
-        }
-
-        LabeledRow("Sound") {
-            OutlinedButton(onClick = {
-                val i = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                    putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                    putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                    putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-                    putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alarm sound")
-                    putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
-                    val current: Uri? = when (ringtone) {
-                        null -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                        "" -> null
-                        else -> Uri.parse(ringtone)
-                    }
-                    putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, current)
+                HorizontalDivider()
+                SettingRow("Skip Thai public holidays", "Calendar first, built-in list as backup") {
+                    Switch(checked = skip, onCheckedChange = { skip = it }, enabled = days != 0)
                 }
-                picker.launch(i)
-            }) { Text("Choose") }
+                HorizontalDivider()
+                SettingRow("Sound", ringtoneTitle(ctx, ringtone), onClick = ::launchPicker) {
+                    OutlinedButton(onClick = ::launchPicker) { Text("Choose") }
+                }
+                HorizontalDivider()
+                SettingRow("Vibrate") { Switch(checked = vibrate, onCheckedChange = { vibrate = it }) }
+                HorizontalDivider()
+                SettingRow("Snooze: $snooze min") {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { snooze = (snooze - 1).coerceAtLeast(1) }) { Text("−") }
+                        OutlinedButton(onClick = { snooze = (snooze + 1).coerceAtMost(60) }) { Text("+") }
+                    }
+                }
+            }
         }
-        Hint(ringtoneTitle(ctx, ringtone))
 
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (alarm.id != 0) TextButton(onClick = onDelete) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             Box(Modifier.weight(1f))
             TextButton(onClick = onCancel) { Text("Cancel") }

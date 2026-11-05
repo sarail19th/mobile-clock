@@ -3,26 +3,30 @@
 package app.personal.clock.ui
 
 import android.text.format.DateFormat
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +41,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,8 +65,11 @@ private val REGIONS = listOf(
 fun selectableZones(): List<String> =
     ZoneId.getAvailableZoneIds().filter { id -> REGIONS.any { id.startsWith(it) } }.sorted()
 
+private val NIGHT = Color(0xFF26304F)
+private val DAY = Color(0xFFF3C969)
+
 @Composable
-fun WorldScreen() {
+fun WorldScreen(onSettings: () -> Unit) {
     val ctx = LocalContext.current
     val store = remember { Store.get(ctx) }
     val is24 = DateFormat.is24HourFormat(ctx)
@@ -69,57 +79,89 @@ fun WorldScreen() {
     val settings = remember { store.settings() }
     val homeZone = settings.zone()
     val now = Instant.ofEpochMilli(tick)
+    val homeNow = now.atZone(homeZone)
 
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(
-            Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(zones, key = { it }) { id ->
-                val zone = runCatching { ZoneId.of(id) }.getOrNull()
-                if (zone != null) {
-                    val zdt = now.atZone(zone)
-                    val offsetSec = zdt.offset.totalSeconds
-                    val dayDiff = ChronoUnit.DAYS.between(now.atZone(homeZone).toLocalDate(), zdt.toLocalDate())
-                    val dayText = when (dayDiff) {
-                        0L -> "Today"
-                        1L -> "Tomorrow"
-                        -1L -> "Yesterday"
-                        else -> "${if (dayDiff > 0) "+" else ""}$dayDiff days"
-                    }
-                    val dst = zone.rules.isDaylightSavings(now)
-                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-                        Row(Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(Fmt.cityName(id), style = MaterialTheme.typography.titleMedium)
-                                Hint(
-                                    "${Fmt.utcOffset(offsetSec)} · $dayText" + (if (dst) " · DST" else "") +
-                                        (if (id == homeZone.id) " · home" else ""),
-                                )
-                                Hint(id)
+        Column(Modifier.fillMaxSize()) {
+            ScreenHeader("World", onSettings)
+            LazyColumn(
+                Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(zones, key = { it }) { id ->
+                    val zone = runCatching { ZoneId.of(id) }.getOrNull()
+                    if (zone != null) {
+                        val zdt = now.atZone(zone)
+                        val dayDiff = ChronoUnit.DAYS.between(homeNow.toLocalDate(), zdt.toLocalDate())
+                        val dayText = when (dayDiff) {
+                            0L -> "Today"
+                            1L -> "Tomorrow"
+                            -1L -> "Yesterday"
+                            else -> "${if (dayDiff > 0) "+" else ""}$dayDiff days"
+                        }
+                        val isHome = id == homeZone.id
+                        val dst = zone.rules.isDaylightSavings(now)
+                        val frac = (zdt.hour * 60 + zdt.minute) / 1440f
+                        Card(
+                            Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isHome) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainer,
+                            ),
+                        ) {
+                            Column(Modifier.padding(start = 16.dp, top = 12.dp, bottom = 14.dp, end = 4.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(Fmt.cityName(id), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            if (isHome) Pill("Home", MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, Modifier.padding(start = 8.dp))
+                                            if (dst) Pill("DST", Color(0xFFFFF1D6), Color(0xFF7A4A00), Modifier.padding(start = 6.dp))
+                                        }
+                                        Hint(
+                                            "${Fmt.utcOffset(zdt.offset.totalSeconds)} · $dayText" +
+                                                if (isHome) "" else " · ${Fmt.hoursDiff(zdt.offset.totalSeconds - homeNow.offset.totalSeconds)}",
+                                        )
+                                    }
+                                    Text(
+                                        zdt.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a", Locale.getDefault())),
+                                        fontSize = 32.sp, fontWeight = FontWeight.Light,
+                                    )
+                                    IconButton(onClick = {
+                                        zones = zones.filterNot { it == id }
+                                        store.saveWorld(zones)
+                                    }) { Icon(Icons.Default.Delete, contentDescription = "Remove ${Fmt.cityName(id)}") }
+                                }
+                                // 24-hour strip in the city's own time: dark = night, gold = daytime, bar = now.
+                                Box(Modifier.padding(top = 10.dp, end = 12.dp).fillMaxWidth().height(16.dp), contentAlignment = Alignment.CenterStart) {
+                                    Box(
+                                        Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(
+                                            Brush.horizontalGradient(
+                                                0f to NIGHT, 0.25f to NIGHT, 0.30f to DAY, 0.70f to DAY, 0.75f to NIGHT, 1f to NIGHT,
+                                            ),
+                                        ),
+                                    )
+                                    Row(Modifier.fillMaxWidth()) {
+                                        Spacer(Modifier.weight(frac.coerceIn(0.001f, 0.999f)))
+                                        Box(Modifier.width(4.dp).height(16.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.onSurface))
+                                        Spacer(Modifier.weight((1f - frac).coerceIn(0.001f, 0.999f)))
+                                    }
+                                }
                             }
-                            Text(
-                                zdt.format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a", Locale.getDefault())),
-                                fontSize = 30.sp,
-                                fontWeight = FontWeight.Light,
-                            )
-                            IconButton(onClick = {
-                                zones = zones.filterNot { it == id }
-                                store.saveWorld(zones)
-                            }) { Icon(Icons.Default.Delete, contentDescription = "Remove ${Fmt.cityName(id)}") }
                         }
                     }
                 }
-            }
-            item {
-                Hint("Offsets are computed from the phone's built-in time-zone database, so daylight saving is handled automatically.")
+                item {
+                    Hint("Offsets come from the phone's built-in time-zone database, so daylight saving is handled automatically.")
+                }
             }
         }
-        FloatingActionButton(
+        ExtendedFloatingActionButton(
             onClick = { adding = true },
+            icon = { Icon(Icons.Default.Search, contentDescription = null) },
+            text = { Text("Add city") },
             modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
-        ) { Icon(Icons.Default.Add, contentDescription = "Add city") }
+        )
     }
 
     if (adding) {

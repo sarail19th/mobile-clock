@@ -18,6 +18,16 @@ object Fmt {
         return "UTC$sign$h" + if (m != 0) ":" + m.toString().padStart(2, '0') else ""
     }
 
+    /** Difference between two UTC offsets as "+2 h", "\u22127 h", "+5:30 h", "same time". */
+    fun hoursDiff(diffSeconds: Int): String {
+        if (diffSeconds == 0) return "same time"
+        val sign = if (diffSeconds < 0) "\u2212" else "+"
+        val a = abs(diffSeconds)
+        val h = a / 3600
+        val m = (a % 3600) / 60
+        return sign + h + (if (m != 0) ":" + m.toString().padStart(2, '0') else "") + " h"
+    }
+
     /** "3 h 20 m", "2 d 4 h", "45 m", "< 1 m". Rounds up to the next whole minute. */
     fun until(ms: Long): String {
         val totalMin = ((ms.coerceAtLeast(0) + 59_999L) / 60_000L).toInt()

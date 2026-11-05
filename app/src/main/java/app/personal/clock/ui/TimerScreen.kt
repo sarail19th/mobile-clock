@@ -16,6 +16,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.res.painterResource
+import app.personal.clock.R
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -47,7 +61,7 @@ import app.personal.clock.data.Store
 import app.personal.clock.data.TimerItem
 
 @Composable
-fun TimerScreen() {
+fun TimerScreen(onSettings: () -> Unit) {
     val ctx = LocalContext.current
     val store = remember { Store.get(ctx) }
     val tick by rememberTicker(250L)
@@ -58,27 +72,39 @@ fun TimerScreen() {
     val nowE = SystemClock.elapsedRealtime()
 
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("New timer", style = MaterialTheme.typography.titleMedium)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ScreenHeader("Timer", onSettings)
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionTitle("Quick start", Modifier.padding(top = 4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf(1, 5, 10, 15).forEach { m ->
-                    AssistChip(
+                    Card(
                         onClick = { TimerController.add(ctx, m * 60_000L, ""); version++ },
-                        label = { Text("$m min") },
-                    )
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("$m", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Hint("min")
+                        }
+                    }
                 }
-                AssistChip(onClick = { showCustom = true }, label = { Text("Custom…") })
             }
+            OutlinedButton(onClick = { showCustom = true }, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Text("  Custom timer", fontWeight = FontWeight.Bold)
+            }
+            SectionTitle("Running", Modifier.padding(top = 6.dp))
         }
         if (timers.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Hint("Tap a preset to start a timer. Several can run at once.")
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                Hint("Tap a preset to start a timer. Several can run at once.", Modifier.padding(24.dp))
             }
         } else {
             LazyColumn(
                 Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(timers, key = { it.id }) { t ->
                     TimerCard(t, nowE, onChange = { version++ })
@@ -104,36 +130,48 @@ private fun TimerCard(t: TimerItem, nowE: Long, onChange: () -> Unit) {
     val ctx = LocalContext.current
     val left = t.remaining(nowE)
     val running = t.state == TimerItem.RUNNING
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    Fmt.clockHms(left),
-                    fontSize = 44.sp,
-                    fontWeight = FontWeight.Light,
-                    modifier = Modifier.weight(1f),
+    val fraction = if (t.durationMs > 0) (left.toFloat() / t.durationMs).coerceIn(0f, 1f) else 0f
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { fraction },
+                    modifier = Modifier.size(84.dp),
+                    strokeWidth = 8.dp,
+                    color = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 )
                 Text(
-                    t.label.ifBlank { Fmt.clockHms(t.durationMs) + " timer" },
-                    style = MaterialTheme.typography.bodyMedium,
+                    if (running) "${(fraction * 100).toInt()}%" else if (t.state == TimerItem.PAUSED) "Paused" else "Ready",
+                    fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            LinearProgressIndicator(
-                progress = { if (t.durationMs > 0) (left.toFloat() / t.durationMs).coerceIn(0f, 1f) else 0f },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(Fmt.clockHms(left), fontSize = 34.sp, fontWeight = FontWeight.Light, maxLines = 1)
+                Hint(t.label.ifBlank { Fmt.clockHms(t.durationMs) + " timer" })
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if (running) {
-                    Button(onClick = { TimerController.pause(ctx, t.id); onChange() }) { Text("Pause") }
+                    FilledTonalIconButton(onClick = { TimerController.pause(ctx, t.id); onChange() }) {
+                        Icon(painterResource(R.drawable.ic_pause), contentDescription = "Pause")
+                    }
                 } else {
-                    Button(onClick = { TimerController.start(ctx, t.id); onChange() }) {
-                        Text(if (t.state == TimerItem.PAUSED) "Resume" else "Start")
+                    FilledIconButton(onClick = { TimerController.start(ctx, t.id); onChange() }) {
+                        Icon(painterResource(R.drawable.ic_play), contentDescription = if (t.state == TimerItem.PAUSED) "Resume" else "Start")
                     }
                 }
-                OutlinedButton(onClick = { TimerController.reset(ctx, t.id); onChange() }) { Text("Reset") }
-                Box(Modifier.weight(1f))
-                TextButton(onClick = { TimerController.delete(ctx, t.id); onChange() }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                Row {
+                    IconButton(onClick = { TimerController.reset(ctx, t.id); onChange() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                    }
+                    IconButton(onClick = { TimerController.delete(ctx, t.id); onChange() }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }
