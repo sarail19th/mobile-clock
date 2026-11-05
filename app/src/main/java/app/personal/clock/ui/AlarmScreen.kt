@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package app.personal.clock.ui
 
@@ -379,18 +379,23 @@ private fun AlarmEditor(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf("M", "T", "W", "T", "F", "S", "S").forEachIndexed { i, ch ->
                 val on = days and (1 shl i) != 0
-                FilterChip(
+                ChoiceChip(
                     selected = on,
                     onClick = { days = days xor (1 shl i) },
                     label = { Text(ch, fontWeight = FontWeight.Bold) },
                     modifier = Modifier.size(width = 44.dp, height = 40.dp),
+                    showCheck = false,
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AssistChip(onClick = { days = AlarmItem.WEEKDAYS }, label = { Text("Weekdays") })
-            AssistChip(onClick = { days = 0x7F }, label = { Text("Every day") })
-            AssistChip(onClick = { days = 0 }, label = { Text("Once") })
+        // Wraps onto a second line on large font sizes instead of breaking a word; the one matching the days is highlighted.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            ChoiceChip(selected = days == AlarmItem.WEEKDAYS, onClick = { days = AlarmItem.WEEKDAYS }, label = { Text("Weekdays", maxLines = 1) })
+            ChoiceChip(selected = days == 0x7F, onClick = { days = 0x7F }, label = { Text("Every day", maxLines = 1) })
+            ChoiceChip(selected = days == 0, onClick = { days = 0 }, label = { Text("Once", maxLines = 1) })
         }
 
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {

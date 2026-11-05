@@ -58,7 +58,7 @@ import app.personal.clock.widget.WidgetTemplates
 import app.personal.clock.widget.WidgetTypefaces
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -169,10 +169,13 @@ private fun ConfigScreen(
     val worldFallback = remember { worldZones.firstOrNull { it != homeId } ?: "Asia/Tokyo" }
     val custom = cfg.font != 0 || cfg.layout != WidgetConfig.LAYOUT_STACK || !WidgetRenderer.liveOrder(cfg)
     fun move(line: Char, delta: Int) {
-        val a = cfg.order.toCharArray()
+        // Classic reorders all four lines; Analog + digital has no second clock, so only the first three move.
+        val movable = if (cfg.layout == WidgetConfig.LAYOUT_STACK) 4 else 3
+        val base = if (cfg.layout == WidgetConfig.LAYOUT_STACK) cfg.safeOrder else cfg.safeOrder.filter { it != 'W' } + "W"
+        val a = base.toCharArray()
         val i = a.indexOf(line)
         val j = i + delta
-        if (i >= 0 && j in a.indices) {
+        if (i >= 0 && i < movable && j >= 0 && j < movable) {
             val t = a[i]; a[i] = a[j]; a[j] = t
             cfg = cfg.copy(order = a.concatToString())
         }
@@ -264,7 +267,7 @@ private fun ConfigScreen(
                         SectionTitle("Font")
                         ChipRow {
                             WidgetTypefaces.names.forEachIndexed { i, n ->
-                                FilterChip(selected = cfg.font == i, onClick = { cfg = cfg.copy(font = i) }, label = { Text(n) })
+                                ChoiceChip(selected = cfg.font == i, onClick = { cfg = cfg.copy(font = i) }, label = { Text(n) })
                             }
                         }
                         if (custom) {
@@ -280,7 +283,7 @@ private fun ConfigScreen(
                                     Triple("Normal", WidgetConfig.DEFAULT_SHADOW_STRENGTH, WidgetConfig.DEFAULT_SHADOW_BLUR),
                                     Triple("Strong", 90, 3),
                                 ).forEach { (name, strength, blur) ->
-                                    FilterChip(
+                                    ChoiceChip(
                                         selected = cfg.shadowStrength == strength && cfg.shadowBlur == blur,
                                         onClick = { cfg = cfg.copy(shadowStrength = strength, shadowBlur = blur) },
                                         label = { Text(name) },
@@ -298,7 +301,7 @@ private fun ConfigScreen(
                         SectionTitle("Time zone")
                         ChipRow {
                             listOf("Home zone (${Fmt.cityName(homeId)})", "Phone's zone").forEachIndexed { i, n ->
-                                FilterChip(selected = cfg.zoneMode == i, onClick = { cfg = cfg.copy(zoneMode = i) }, label = { Text(n) })
+                                ChoiceChip(selected = cfg.zoneMode == i, onClick = { cfg = cfg.copy(zoneMode = i) }, label = { Text(n) })
                             }
                         }
                     }
@@ -314,7 +317,7 @@ private fun ConfigScreen(
                             SectionTitle("Horizontal alignment")
                             ChipRow {
                                 listOf("Left", "Center", "Right").forEachIndexed { i, n ->
-                                    FilterChip(selected = cfg.hAlign == i, onClick = { cfg = cfg.copy(hAlign = i) }, label = { Text(n) })
+                                    ChoiceChip(selected = cfg.hAlign == i, onClick = { cfg = cfg.copy(hAlign = i) }, label = { Text(n) })
                                 }
                             }
                         }
@@ -322,7 +325,7 @@ private fun ConfigScreen(
                             SectionTitle("Vertical alignment")
                             ChipRow {
                                 listOf("Top", "Middle", "Bottom").forEachIndexed { i, n ->
-                                    FilterChip(selected = cfg.vAlign == i, onClick = { cfg = cfg.copy(vAlign = i) }, label = { Text(n) })
+                                    ChoiceChip(selected = cfg.vAlign == i, onClick = { cfg = cfg.copy(vAlign = i) }, label = { Text(n) })
                                 }
                             }
                         }
@@ -330,7 +333,7 @@ private fun ConfigScreen(
                         SectionTitle("When tapped")
                         ChipRow {
                             listOf("Open app", "Open Alarm tab", "Do nothing").forEachIndexed { i, n ->
-                                FilterChip(selected = cfg.tapAction == i, onClick = { cfg = cfg.copy(tapAction = i) }, label = { Text(n) })
+                                ChoiceChip(selected = cfg.tapAction == i, onClick = { cfg = cfg.copy(tapAction = i) }, label = { Text(n) })
                             }
                         }
                     }
@@ -339,7 +342,7 @@ private fun ConfigScreen(
                         SectionTitle("Style")
                         ChipRow {
                             listOf("Solid", "Transparent", "Frosted").forEachIndexed { i, n ->
-                                FilterChip(selected = cfg.bgMode == i, onClick = { cfg = cfg.copy(bgMode = i) }, label = { Text(n) })
+                                ChoiceChip(selected = cfg.bgMode == i, onClick = { cfg = cfg.copy(bgMode = i) }, label = { Text(n) })
                             }
                         }
                         when (cfg.bgMode) {
@@ -361,16 +364,21 @@ private fun ConfigScreen(
                     else -> {
                         // ------------------------------------------------ one card per line: its own switch, size and colour
                         Hint(
-                            if (cfg.layout == WidgetConfig.LAYOUT_STACK) "Each line has its own size and colour. Tap a card to open it, and use \u25B2 \u25BC to change the order of the lines."
+                            if (caps.reorder) "Each line has its own size and colour. Tap a card to open it, and use \u25B2 \u25BC to change the order of the lines."
                             else "Showing only what the ${caps.name} layout uses. Lines it does not draw are greyed out.",
                         )
-                        val stackLayout = cfg.layout == WidgetConfig.LAYOUT_STACK
-                        val lineOrder = if (stackLayout && WidgetConfig.validOrder(cfg.order)) cfg.order else WidgetConfig.DEFAULT_ORDER
+                        val canReorder = caps.reorder
+                        val movableCount = if (cfg.layout == WidgetConfig.LAYOUT_STACK) 4 else 3
+                        val lineOrder = when {
+                            !canReorder -> WidgetConfig.DEFAULT_ORDER
+                            cfg.layout == WidgetConfig.LAYOUT_STACK -> cfg.safeOrder
+                            else -> cfg.safeOrder.filter { it != 'W' } + "W"
+                        }
                         for (line in lineOrder) {
                             key(line) {
                                 when (line) {
                                     'T' -> {
-                                LineCard("Time", if (caps.timeSize) "${cfg.sizeSp} sp" else "colour only", null, {}, open = openLine == 0, onToggle = { openLine = if (openLine == 0) -1 else 0 }, movable = stackLayout, canUp = lineOrder.indexOf('T') > 0, canDown = lineOrder.indexOf('T') < 3, onMove = { move('T', it) }) {
+                                LineCard("Time", if (caps.timeSize) "${cfg.sizeSp} sp" else "colour only", null, {}, open = openLine == 0, onToggle = { openLine = if (openLine == 0) -1 else 0 }, movable = canReorder, canUp = lineOrder.indexOf('T') > 0, canDown = lineOrder.indexOf('T') < movableCount - 1, onMove = { move('T', it) }) {
                                     if (caps.timeSize) {
                                         SliderRow("Size: ${cfg.sizeSp} sp", cfg.sizeSp.toFloat(), 24f..120f) { cfg = cfg.copy(sizeSp = it.roundToInt()) }
                                     }
@@ -392,7 +400,7 @@ private fun ConfigScreen(
                                     'D' -> {
                                 LineCard(
                                     "Date", "${cfg.dateSizeSp} sp", if (caps.dateSwitch) cfg.showDate else null, { cfg = cfg.copy(showDate = it) },
-                                    open = openLine == 1, onToggle = { openLine = if (openLine == 1) -1 else 1 }, movable = stackLayout, canUp = lineOrder.indexOf('D') > 0, canDown = lineOrder.indexOf('D') < 3, onMove = { move('D', it) }, active = caps.dateLine, inactiveNote = "Not used by this layout.",
+                                    open = openLine == 1, onToggle = { openLine = if (openLine == 1) -1 else 1 }, movable = canReorder, canUp = lineOrder.indexOf('D') > 0, canDown = lineOrder.indexOf('D') < movableCount - 1, onMove = { move('D', it) }, active = caps.dateLine, inactiveNote = "Not used by this layout.",
                                 ) {
                                     if (caps.dateNote.isNotEmpty()) Hint(caps.dateNote)
                                     SliderRow("Size: ${cfg.dateSizeSp} sp", cfg.dateSizeSp.toFloat(), 10f..40f) { cfg = cfg.copy(dateSizeSp = it.roundToInt()) }
@@ -403,7 +411,7 @@ private fun ConfigScreen(
                                             WidgetConfig.DATE_FORMATS.forEachIndexed { i, f ->
                                                 val sample = java.time.LocalDate.of(2026, 11, 4)
                                                     .format(java.time.format.DateTimeFormatter.ofPattern(f, java.util.Locale.getDefault()))
-                                                FilterChip(selected = cfg.dateFormat == i, onClick = { cfg = cfg.copy(dateFormat = i) }, label = { Text(sample) })
+                                                ChoiceChip(selected = cfg.dateFormat == i, onClick = { cfg = cfg.copy(dateFormat = i) }, label = { Text(sample) })
                                             }
                                         }
                                     }
@@ -412,7 +420,7 @@ private fun ConfigScreen(
                                     'A' -> {
                                 LineCard(
                                     "Next alarm", "${cfg.alarmSizeSp} sp", if (caps.alarmSwitch) cfg.showNextAlarm else null, { cfg = cfg.copy(showNextAlarm = it) },
-                                    open = openLine == 2, onToggle = { openLine = if (openLine == 2) -1 else 2 }, movable = stackLayout, canUp = lineOrder.indexOf('A') > 0, canDown = lineOrder.indexOf('A') < 3, onMove = { move('A', it) }, active = caps.alarmLine, inactiveNote = "Not shown by this layout.",
+                                    open = openLine == 2, onToggle = { openLine = if (openLine == 2) -1 else 2 }, movable = canReorder, canUp = lineOrder.indexOf('A') > 0, canDown = lineOrder.indexOf('A') < movableCount - 1, onMove = { move('A', it) }, active = caps.alarmLine, inactiveNote = "Not shown by this layout.",
                                 ) {
                                     if (!caps.alarmSwitch) Hint("This layout always shows the next alarm.")
                                     SliderRow("Size: ${cfg.alarmSizeSp} sp", cfg.alarmSizeSp.toFloat(), 10f..32f) { cfg = cfg.copy(alarmSizeSp = it.roundToInt()) }
@@ -428,12 +436,12 @@ private fun ConfigScreen(
                                         val pick = cfg.worldZone.ifBlank { worldFallback }
                                         cfg = cfg.copy(showWorld = on, worldZone = pick)
                                     },
-                                    open = openLine == 3, onToggle = { openLine = if (openLine == 3) -1 else 3 }, movable = stackLayout, canUp = lineOrder.indexOf('W') > 0, canDown = lineOrder.indexOf('W') < 3, onMove = { move('W', it) }, active = caps.worldLine, inactiveNote = "Not shown by this layout.",
+                                    open = openLine == 3, onToggle = { openLine = if (openLine == 3) -1 else 3 }, movable = canReorder, canUp = lineOrder.indexOf('W') > 0, canDown = lineOrder.indexOf('W') < movableCount - 1, onMove = { move('W', it) }, active = caps.worldLine, inactiveNote = "Not shown by this layout.",
                                 ) {
                                     if (worldZones.size <= 1) Hint("Add more cities in the World tab to choose from.")
                                     ChipRow {
                                         (worldZones + worldFallback).distinct().forEach { z ->
-                                            FilterChip(selected = cfg.worldZone == z, onClick = { cfg = cfg.copy(worldZone = z) }, label = { Text(WorldEntry.label(z)) })
+                                            ChoiceChip(selected = cfg.worldZone == z, onClick = { cfg = cfg.copy(worldZone = z) }, label = { Text(WorldEntry.label(z)) })
                                         }
                                     }
                                     if (caps.worldStyle) {
@@ -537,34 +545,35 @@ private fun ChipRow(content: @Composable () -> Unit) {
     }
 }
 
-/** The five editor sections as equal-width tabs on one line (wrapping chips if the phone's font size is very large). */
+/**
+ * The five editor sections as a text tab bar with an underline under the current one. It is navigation, so it looks
+ * different from the option chips below it. Labels ignore the phone's font-size setting (like a navigation bar) so
+ * all five always fit on one line.
+ */
 @Composable
 private fun SectionTabs(selected: Int, onSelect: (Int) -> Unit) {
-    if (LocalDensity.current.fontScale > 1.15f) {
-        FlowRow(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            SECTIONS.forEachIndexed { i, n -> FilterChip(selected = selected == i, onClick = { onSelect(i) }, label = { Text(n, maxLines = 1) }) }
-        }
-    } else {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    val fontScale = LocalDensity.current.fontScale.coerceAtLeast(0.5f)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        Row(Modifier.fillMaxWidth()) {
             SECTIONS.forEachIndexed { i, n ->
                 val on = selected == i
-                Box(
-                    Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
-                        .background(if (on) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer)
-                        .clickable { onSelect(i) }.padding(vertical = 9.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
+                Column(Modifier.weight(1f).clickable { onSelect(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        n, maxLines = 1, softWrap = false, fontSize = 12.sp,
+                        n, maxLines = 1, softWrap = false, fontSize = (12f / fontScale).sp,
                         fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
-                        color = if (on) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+                        color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 10.dp),
+                    )
+                    Box(
+                        Modifier.fillMaxWidth().height(3.dp).background(
+                            if (on) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp),
+                        ),
                     )
                 }
             }
         }
+        HorizontalDivider()
     }
 }
 

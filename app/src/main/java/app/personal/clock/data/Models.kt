@@ -154,6 +154,9 @@ data class WidgetConfig(
     val tapAction: Int = TAP_APP,
 ) {
     /** True when the date sits above the time (the live-clock widget can only do this one reordering). */
+    /** [order] if it is a valid permutation, otherwise the default. */
+    val safeOrder: String get() = if (validOrder(order)) order else DEFAULT_ORDER
+
     val dateAbove: Boolean get() = order.indexOf('D') < order.indexOf('T')
 
     fun toJson(): JSONObject = JSONObject()

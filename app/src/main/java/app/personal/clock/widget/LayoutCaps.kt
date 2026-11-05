@@ -25,6 +25,8 @@ class LayoutCaps(
     val accent: Boolean,
     /** What the date line is used for, when it isn't the date itself. */
     val dateNote: String = "",
+    /** True when the lines can be reordered (Classic and Analog + digital). */
+    val reorder: Boolean = false,
 ) {
     companion object {
         fun of(layout: Int): LayoutCaps = when (layout) {
@@ -49,13 +51,13 @@ class LayoutCaps(
             WidgetConfig.LAYOUT_ANALOG_DIGITAL -> LayoutCaps(
                 "Analog + digital", hAlign = false, vAlign = false, datePosition = false, timeSize = true, timeFormat = true,
                 dateLine = true, dateSwitch = true, dateFormat = true, alarmLine = true, alarmSwitch = true,
-                worldLine = false, worldSwitch = false, worldStyle = false, accent = true,
+                worldLine = false, worldSwitch = false, worldStyle = false, accent = true, reorder = true,
             )
             WidgetConfig.LAYOUT_ALARM_CARD -> LayoutCaps(
                 "Alarm card", hAlign = false, vAlign = false, datePosition = false, timeSize = true, timeFormat = true,
-                dateLine = true, dateSwitch = true, dateFormat = false, alarmLine = true, alarmSwitch = false,
+                dateLine = true, dateSwitch = true, dateFormat = true, alarmLine = true, alarmSwitch = false,
                 worldLine = false, worldSwitch = false, worldStyle = false, accent = false,
-                dateNote = "Used for the small \"Now\" line and the \"Next alarm\" caption.",
+                dateNote = "Shown under the alarm time. Its size and colour also style the \"Next alarm\" caption.",
             )
             WidgetConfig.LAYOUT_DATE_FIRST -> LayoutCaps(
                 "Date first", hAlign = false, vAlign = false, datePosition = false, timeSize = true, timeFormat = true,
@@ -65,7 +67,7 @@ class LayoutCaps(
             else -> LayoutCaps(
                 "Classic", hAlign = true, vAlign = true, datePosition = true, timeSize = true, timeFormat = true,
                 dateLine = true, dateSwitch = true, dateFormat = true, alarmLine = true, alarmSwitch = true,
-                worldLine = true, worldSwitch = true, worldStyle = true, accent = false,
+                worldLine = true, worldSwitch = true, worldStyle = true, accent = false, reorder = true,
             )
         }
     }

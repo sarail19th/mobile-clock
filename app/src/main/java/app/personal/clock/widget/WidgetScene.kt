@@ -99,9 +99,14 @@ object WidgetScene {
                 val r = RectF(inner.left, inner.centerY() - side / 2, inner.left + side, inner.centerY() + side / 2)
                 analog = r
                 val rows = ArrayList<Row>()
-                rows += timeRow(cfg, text)
-                if (cfg.showDate) rows += Row(listOf(Txt(text.date, cfg.dateSizeSp.toFloat(), cfg.dateColor)))
-                if (cfg.showNextAlarm && text.alarm != null) rows += Row(listOf(Txt(text.alarm, cfg.alarmSizeSp.toFloat(), cfg.alarmColor)))
+                for (line in cfg.safeOrder) {
+                    when (line) {
+                        'T' -> rows += timeRow(cfg, text)
+                        'D' -> if (cfg.showDate) rows += Row(listOf(Txt(text.date, cfg.dateSizeSp.toFloat(), cfg.dateColor)))
+                        'A' -> if (cfg.showNextAlarm && text.alarm != null) rows += Row(listOf(Txt(text.alarm, cfg.alarmSizeSp.toFloat(), cfg.alarmColor)))
+                        else -> Unit
+                    }
+                }
                 blocks += Block(RectF(r.right + gap, inner.top, inner.right, inner.bottom), rows, WidgetConfig.ALIGN_START, WidgetConfig.ALIGN_CENTER)
             }
             WidgetConfig.LAYOUT_ALARM_CARD -> {
@@ -109,7 +114,7 @@ object WidgetScene {
                 rows += Row(listOf(Txt("Next alarm", cfg.dateSizeSp.toFloat(), cfg.dateColor)))
                 rows += Row(listOf(Txt(text.alarmClock ?: "--:--", cfg.sizeSp.toFloat(), cfg.textColor)))
                 rows += Row(listOf(Txt(text.alarmWhen ?: "No alarm set", cfg.alarmSizeSp.toFloat(), cfg.alarmColor)))
-                if (cfg.showDate) rows += Row(listOf(Txt("Now " + text.time + text.ampm.let { if (it.isEmpty()) "" else " $it" }, cfg.dateSizeSp * 0.9f, cfg.dateColor)))
+                if (cfg.showDate) rows += Row(listOf(Txt(text.date, cfg.dateSizeSp.toFloat(), cfg.dateColor)))
                 blocks += Block(inner, rows, WidgetConfig.ALIGN_CENTER, WidgetConfig.ALIGN_CENTER)
             }
             WidgetConfig.LAYOUT_DATE_FIRST -> {

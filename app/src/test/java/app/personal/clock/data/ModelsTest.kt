@@ -103,4 +103,9 @@ class ModelsTest {
         assertTrue(WidgetConfig.validOrder("WADT"))
         assertFalse(WidgetConfig.validOrder("WADX"))
     }
+
+    @Test fun safeOrderFallsBackToTheDefault() {
+        assertEquals("TDAW", WidgetConfig(order = "XXXX").safeOrder)
+        assertEquals("DATW", WidgetConfig(order = "DATW").safeOrder)
+    }
 }

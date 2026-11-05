@@ -40,7 +40,7 @@ object WidgetTemplates {
             showWorld = false, cornerStep = WidgetConfig.MAX_CORNER_STEP, paddingDp = 10,
         )
         4 -> base.copy(
-            layout = WidgetConfig.LAYOUT_ANALOG_DIGITAL, sizeSp = 46, dateSizeSp = 15, alarmSizeSp = 13, showDate = true,
+            layout = WidgetConfig.LAYOUT_ANALOG_DIGITAL, order = WidgetConfig.DEFAULT_ORDER, sizeSp = 46, dateSizeSp = 15, alarmSizeSp = 13, showDate = true,
             showNextAlarm = true, showWorld = false, paddingDp = 12,
         )
         5 -> base.copy(

@@ -14,6 +14,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import app.personal.clock.R
 import androidx.compose.foundation.layout.Arrangement
@@ -189,3 +193,33 @@ fun DayDots(mask: Int, modifier: Modifier = Modifier) {
 
 /** True during local daytime (06:00-18:00): used for the sun/moon icon and the day/night strip. */
 fun isDaytime(hour: Int): Boolean = hour in 6..17
+
+/**
+ * A selectable option chip used everywhere a choice is made (fonts, date formats, repeat days...).
+ * Selected = solid app colour with white text and a tick; not selected = outline only. Tabs that navigate use a
+ * different, underline look so the two are never confused.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChoiceChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    showCheck: Boolean = true,
+) {
+    val tick: (@Composable () -> Unit)? =
+        if (selected && showCheck) ({ Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }) else null
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = label,
+        modifier = modifier,
+        leadingIcon = tick,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    )
+}
