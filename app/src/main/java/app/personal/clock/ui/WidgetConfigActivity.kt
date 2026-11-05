@@ -217,6 +217,24 @@ private fun ConfigScreen(
                         LabeledRow("Text shadow (readability on busy wallpapers)") {
                             Switch(checked = cfg.shadow, onCheckedChange = { cfg = cfg.copy(shadow = it) })
                         }
+                        if (cfg.shadow) {
+                            ChipRow {
+                                listOf(
+                                    Triple("Soft glow", 38, 9),
+                                    Triple("Normal", WidgetConfig.DEFAULT_SHADOW_STRENGTH, WidgetConfig.DEFAULT_SHADOW_BLUR),
+                                    Triple("Strong", 90, 3),
+                                ).forEach { (name, strength, blur) ->
+                                    FilterChip(
+                                        selected = cfg.shadowStrength == strength && cfg.shadowBlur == blur,
+                                        onClick = { cfg = cfg.copy(shadowStrength = strength, shadowBlur = blur) },
+                                        label = { Text(name) },
+                                    )
+                                }
+                            }
+                            SliderRow("Shadow darkness: ${cfg.shadowStrength}%", cfg.shadowStrength.toFloat(), 0f..100f) { cfg = cfg.copy(shadowStrength = it.roundToInt()) }
+                            SliderRow("Shadow softness: ${cfg.shadowBlur} dp", cfg.shadowBlur.toFloat(), 0f..20f) { cfg = cfg.copy(shadowBlur = it.roundToInt()) }
+                            Hint("\"Soft glow\" gives the faint, wide shadow used by many health and weather widgets. Changing the shadow draws the widget as a picture.")
+                        }
                         SectionTitle("Accent colour")
                         ColorRow("Minute hand on analog faces", cfg.accentColor, ACCENT_SWATCHES) { cfg = cfg.copy(accentColor = it) }
                         SectionTitle("Time zone")

@@ -128,6 +128,9 @@ data class WidgetConfig(
     /** 0 = app home zone setting (Bangkok unless "follow phone" is on), 1 = always the phone's zone. */
     val zoneMode: Int = 0,
     val shadow: Boolean = false,
+    /** Shadow darkness 0..100 (%) and softness 0..20 (dp of blur). Defaults reproduce the original tight shadow. */
+    val shadowStrength: Int = 70,
+    val shadowBlur: Int = 4,
     val tapAction: Int = TAP_APP,
 ) {
     fun toJson(): JSONObject = JSONObject()
@@ -140,7 +143,7 @@ data class WidgetConfig(
         .put("use24h", use24h).put("showAmPm", showAmPm).put("leadingZero", leadingZero)
         .put("showDate", showDate).put("dateFormat", dateFormat).put("dateAbove", dateAbove)
         .put("showNextAlarm", showNextAlarm).put("showWorld", showWorld).put("worldZone", worldZone)
-        .put("zoneMode", zoneMode).put("shadow", shadow).put("tapAction", tapAction)
+        .put("zoneMode", zoneMode).put("shadow", shadow).put("shadowStrength", shadowStrength).put("shadowBlur", shadowBlur).put("tapAction", tapAction)
 
     companion object {
         const val ALIGN_START = 0
@@ -164,6 +167,8 @@ data class WidgetConfig(
         const val TAP_NONE = 2
 
         const val FONT_COUNT = 9
+        const val DEFAULT_SHADOW_STRENGTH = 70
+        const val DEFAULT_SHADOW_BLUR = 4
         const val MAX_CORNER_STEP = 12
         val DATE_FORMATS = listOf("EEE d MMM", "EEEE, d MMMM", "d MMM yyyy", "EEE, MMM d", "dd/MM/yyyy")
 
@@ -203,6 +208,8 @@ data class WidgetConfig(
                 worldZone = o.optString("worldZone", d.worldZone),
                 zoneMode = o.optInt("zoneMode", d.zoneMode).coerceIn(0, 1),
                 shadow = o.optBoolean("shadow", d.shadow),
+                shadowStrength = o.optInt("shadowStrength", d.shadowStrength).coerceIn(0, 100),
+                shadowBlur = o.optInt("shadowBlur", d.shadowBlur).coerceIn(0, 20),
                 tapAction = o.optInt("tapAction", d.tapAction).coerceIn(0, 2),
             )
         }

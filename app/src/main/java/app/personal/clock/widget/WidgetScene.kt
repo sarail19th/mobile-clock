@@ -145,14 +145,14 @@ object WidgetScene {
 
         // Safety net: shrink everything uniformly until every block fits its box.
         var k = 1f
-        while (k > 0.3f && !blocks.all { fits(it, k, m, face, cfg.shadow, d) }) k -= 0.05f
+        while (k > 0.3f && !blocks.all { fits(it, k, m, face, cfg, d) }) k -= 0.05f
 
         analog?.let { drawAnalog(canvas, it, now, cfg, d) }
         if (divider) {
             val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = (cfg.textColor and 0x00FFFFFF) or (0x66 shl 24); strokeWidth = d }
             canvas.drawLine(inner.centerX(), inner.top + inner.height() * 0.2f, inner.centerX(), inner.bottom - inner.height() * 0.2f, p)
         }
-        blocks.forEach { draw(canvas, it, k, m, face, cfg.shadow, d) }
+        blocks.forEach { draw(canvas, it, k, m, face, cfg, d) }
         return bmp
     }
 
@@ -205,14 +205,22 @@ object WidgetScene {
 
     // ------------------------------------------------------------------ drawing
 
-    private fun layout(rows: List<Row>, k: Float, m: android.util.DisplayMetrics, face: Typeface, shadow: Boolean, d: Float): List<Laid> =
+    /** Applies the user's shadow (strength = darkness, blur = softness) to a paint. */
+    private fun applyShadow(p: Paint, cfg: WidgetConfig, d: Float) {
+        if (!cfg.shadow || cfg.shadowStrength <= 0) return
+        val alpha = (cfg.shadowStrength * 255 / 100).coerceIn(0, 255)
+        val radius = (cfg.shadowBlur * d).coerceAtLeast(0.5f)
+        p.setShadowLayer(radius, 0f, (1f + cfg.shadowBlur * 0.15f) * d, alpha shl 24)
+    }
+
+    private fun layout(rows: List<Row>, k: Float, m: android.util.DisplayMetrics, face: Typeface, cfg: WidgetConfig, d: Float): List<Laid> =
         rows.map { row ->
             val paints = row.parts.map { p ->
                 TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                     typeface = face
                     color = p.color
                     textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, p.sp * k, m)
-                    if (shadow) setShadowLayer(4f * d, 0f, 1.5f * d, 0xB3000000.toInt())
+                    applyShadow(this, cfg, d)
                 }
             }
             val widths = paints.mapIndexed { i, tp -> tp.measureText(row.parts[i].text) }
@@ -222,17 +230,17 @@ object WidgetScene {
             Laid(paints, widths, gaps, widths.sum() + gaps.sum(), -ascent, descent - ascent)
         }
 
-    private fun fits(b: Block, k: Float, m: android.util.DisplayMetrics, face: Typeface, shadow: Boolean, d: Float): Boolean {
+    private fun fits(b: Block, k: Float, m: android.util.DisplayMetrics, face: Typeface, cfg: WidgetConfig, d: Float): Boolean {
         if (b.rows.isEmpty()) return true
-        val laid = layout(b.rows, k, m, face, shadow, d)
+        val laid = layout(b.rows, k, m, face, cfg, d)
         val w = laid.maxOf { it.width }
         val h = laid.fold(0f) { acc, l -> acc + l.height }
         return w <= b.rect.width() + 0.5f && h <= b.rect.height() + 0.5f
     }
 
-    private fun draw(canvas: Canvas, b: Block, k: Float, m: android.util.DisplayMetrics, face: Typeface, shadow: Boolean, d: Float) {
+    private fun draw(canvas: Canvas, b: Block, k: Float, m: android.util.DisplayMetrics, face: Typeface, cfg: WidgetConfig, d: Float) {
         if (b.rows.isEmpty()) return
-        val laid = layout(b.rows, k, m, face, shadow, d)
+        val laid = layout(b.rows, k, m, face, cfg, d)
         val total = laid.fold(0f) { acc, l -> acc + l.height }
         var y = when (b.vAlign) {
             0 -> b.rect.top
@@ -262,7 +270,7 @@ object WidgetScene {
         val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
-            if (cfg.shadow) setShadowLayer(4f * d, 0f, 1.5f * d, 0xB3000000.toInt())
+            applyShadow(this, cfg, d)
         }
         // dial ring
         line.color = (cfg.textColor and 0x00FFFFFF) or (0x88 shl 24)

@@ -57,7 +57,11 @@ object WidgetRenderer {
     fun initialLayout(): Int = LAYOUTS[0]
 
     /** True when this config is drawn as a bitmap (needs the per-minute refresh). */
-    fun usesBitmap(cfg: WidgetConfig): Boolean = cfg.font != 0 || cfg.layout != WidgetConfig.LAYOUT_STACK
+    /** A tuned shadow can't be expressed by a live TextClock layout, so it is drawn as a picture too. */
+    fun hasCustomShadow(cfg: WidgetConfig): Boolean =
+        cfg.shadow && (cfg.shadowStrength != WidgetConfig.DEFAULT_SHADOW_STRENGTH || cfg.shadowBlur != WidgetConfig.DEFAULT_SHADOW_BLUR)
+
+    fun usesBitmap(cfg: WidgetConfig): Boolean = cfg.font != 0 || cfg.layout != WidgetConfig.LAYOUT_STACK || hasCustomShadow(cfg)
 
     /** The widget's time zone id as TextClock wants it. */
     fun clockZone(cfg: WidgetConfig, settings: AppSettings): String =
