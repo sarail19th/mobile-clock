@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personal Clock: offline Android clock widget without seconds</title>
+<meta name="description" content="Fully offline Android clock for Samsung One UI: a customizable home-screen widget with no seconds, alarms that skip public holidays, timers, stopwatch and world clock. No internet permission, no account, no analytics.">
+<meta name="theme-color" content="#2459D6">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Personal Clock: a clock widget without the seconds">
+<meta property="og:description" content="Offline Android clock with a customizable widget, holiday-aware alarms, timers, stopwatch and world clock. No internet permission.">
+<meta property="og:image" content="https://sarail19th.github.io/mobile-clock/img/widget-home.jpg">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#2459D6"/><path d="M16 8v8l5 3" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Personal Clock
+    </a>
+    <nav class="links" aria-label="Main">
+      <a class="hide-sm" href="#features">Features</a>
+      <a class="hide-sm" href="#widget">Widget</a>
+      <a class="hide-sm" href="#install">Install</a>
+      <a class="hide-sm" href="#faq">FAQ</a>
+      <a href="https://github.com/sarail19th/mobile-clock">GitHub</a>
+      <a class="btn small" href="https://github.com/sarail19th/mobile-clock/releases/download/latest/PersonalClock-latest.apk">Download APK</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <!-- hero -->
+  <section class="hero" id="top" style="padding-bottom:48px">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">Android 12+ · Samsung One UI</span>
+        <h1>A clock widget without the seconds.</h1>
+        <p class="lead">A fully offline Android clock: a home-screen widget you can style any way you like, alarms that skip public holidays and your own days off, timers, a stopwatch and a world clock.</p>
+        <div class="cta">
+          <a class="btn" href="https://github.com/sarail19th/mobile-clock/releases/download/latest/PersonalClock-latest.apk">Download APK (18 MB)</a>
+          <a class="btn ghost" href="#features">See features</a>
+        </div>
+        <p class="fine">Free and open source (MIT). Installs from GitHub, not the Play Store. <a href="#install">How to install</a></p>
+      </div>
+      <div class="phones">
+        <div class="phone p2"><img src="img/alarms.jpg" width="560" height="1141" alt="Alarm tab showing the next alarm, the next holiday skip and alarm groups"></div>
+        <div class="phone p1"><img src="img/widget-home.jpg" width="560" height="1141" alt="Home screen with three widgets: compact digital, analog plus digital, and a frosted dual clock"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- trust strip -->
+  <div class="strip">
+    <div class="wrap">
+      <ul>
+        <li>Works fully offline</li>
+        <li>No INTERNET permission, checked in every build</li>
+        <li>No account, no analytics</li>
+        <li>Open source, MIT licensed</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- features -->
+  <section id="features">
+    <div class="wrap">
+      <h2>Built for one phone, done properly</h2>
+      <p class="sub">It started as a replacement for a stock clock widget that began showing seconds. It grew into a small, private clock app.</p>
+      <div class="grid3">
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M8 12h8"/></svg></div>
+          <h3>Widget with no seconds</h3>
+          <p>Eight templates, nine fonts, per-line size and colour, backgrounds, shadow, 12/24 hour, date, next alarm and a second city clock. Every placed widget has its own settings and a live preview.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.5 1.5M5 4 3 6M19 4l2 2"/></svg></div>
+          <h3>Holiday-aware alarms</h3>
+          <p>Work-schedule alarms that skip public holidays: Thai holidays are built in, any country works through your phone's holiday calendar, and you can add your own days off.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M6 3h12M6 21h12M7 3v4l5 5-5 5v4M17 3v4l-5 5 5 5v4"/></svg></div>
+          <h3>Timers and stopwatch</h3>
+          <p>Run several timers at once, edit and reorder saved ones, and get a countdown notification. The stopwatch tracks laps and marks your best and slowest.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></div>
+          <h3>World clock</h3>
+          <p>247 built-in cities, searchable by city or country, with the UTC offset and a day and night bar for each.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></svg></div>
+          <h3>Rings when it should</h3>
+          <p>Uses your own system ringtone on the alarm volume, shows full screen over the lock screen, with snooze and dismiss. Confirmed ringing with the screen off and after a reboot on a Galaxy S25+.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+          <h3>Private by design</h3>
+          <p>No INTERNET permission, no account and no analytics. Backup and restore stay on your phone as a file you control.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- widget -->
+  <section class="alt" id="widget">
+    <div class="wrap split">
+      <div>
+        <h2>Make the widget yours</h2>
+        <p class="sub" style="margin-bottom:0">Start from a template, then change anything. The editor shows exactly what the widget will look like, and the shape follows the size you give it on the home screen.</p>
+        <ul class="checks">
+          <li>Templates: Classic, Compact, Dual clock, Analog, Analog + digital, Big minimal, Date first, Alarm card</li>
+          <li>Reorder Time, Date, Next alarm and Second clock, each with its own size and colour</li>
+          <li>Soft, normal or strong shadow, frosted or solid backgrounds, adjustable opacity</li>
+          <li>The time updates once a minute, never with seconds</li>
+        </ul>
+      </div>
+      <div class="phones">
+        <div class="phone"><img src="img/widget-editor-templates.jpg" width="560" height="1141" loading="lazy" alt="Widget editor with a live preview and template choices"></div>
+        <div class="phone"><img src="img/widget-editor-lines.jpg" width="560" height="1141" loading="lazy" alt="Widget editor: per-line size, colour and order"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- screenshots -->
+  <section id="screens">
+    <div class="wrap">
+      <h2>See it in use</h2>
+      <p class="sub">Five tabs, one gear for settings. Screenshots are from a Samsung Galaxy S25+.</p>
+      <div class="shots">
+        <figure><div class="phone"><img src="img/clock.jpg" width="560" height="1141" loading="lazy" alt="Clock tab with the next alarm and two world clocks"></div><figcaption>Clock</figcaption></figure>
+        <figure><div class="phone"><img src="img/alarms.jpg" width="560" height="1141" loading="lazy" alt="Alarm tab with the next skip and alarm groups"></div><figcaption>Alarms</figcaption></figure>
+        <figure><div class="phone"><img src="img/timer.jpg" width="560" height="1141" loading="lazy" alt="Timer tab with quick start and saved timers"></div><figcaption>Timers</figcaption></figure>
+        <figure><div class="phone"><img src="img/stopwatch.jpg" width="560" height="1141" loading="lazy" alt="Stopwatch tab"></div><figcaption>Stopwatch</figcaption></figure>
+        <figure><div class="phone"><img src="img/world.jpg" width="560" height="1141" loading="lazy" alt="World clock with a day and night bar per city"></div><figcaption>World clock</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- install -->
+  <section class="alt" id="install">
+    <div class="wrap">
+      <h2>Install in four steps</h2>
+      <p class="sub">The app is not on the Play Store. You install the APK straight from GitHub.</p>
+      <ol class="steps">
+        <li><h3>Download the APK</h3><p>Open this page on your phone and tap Download, or use the "Latest build" on the Releases page.</p></li>
+        <li><h3>Allow unknown apps</h3><p>When asked, allow installs from your browser, then install.</p></li>
+        <li><h3>Fix Permission health</h3><p>Open Settings, then Permission health. Fix each red row: exact alarms, notifications, full-screen alarm and battery Unrestricted. Calendar access is optional.</p></li>
+        <li><h3>Add the widget</h3><p>Long-press the home screen, choose Widgets, then Clock (no seconds).</p></li>
+      </ol>
+      <p class="note">New builds install over the old one and keep your alarms, because every build is signed with the same key.</p>
+      <div class="cta">
+        <a class="btn" href="https://github.com/sarail19th/mobile-clock/releases/download/latest/PersonalClock-latest.apk">Download APK (18 MB)</a>
+        <a class="btn ghost" href="https://github.com/sarail19th/mobile-clock/releases/tag/latest">Releases page</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- faq -->
+  <section id="faq">
+    <div class="wrap">
+      <h2>Questions</h2>
+      <div class="faq">
+        <details open>
+          <summary>Does it work on iPhone?</summary>
+          <p>No. It is a native Android app. The widget, exact alarms and lock-screen ringing all use Android-only features.</p>
+        </details>
+        <details>
+          <summary>Which phones does it need?</summary>
+          <p>Android 12 or newer. It is designed and tested on a Samsung Galaxy S25+ with One UI, so Samsung phones are the best supported.</p>
+        </details>
+        <details>
+          <summary>Can I use it outside Thailand?</summary>
+          <p>Yes. Alarms can follow your phone's time zone, and holidays come from the matching holiday calendar on your phone, plus any custom days you add. Only Thailand has a built-in list.</p>
+        </details>
+        <details>
+          <summary>Will updates keep my alarms?</summary>
+          <p>Yes. Updates install over the existing app because every build is signed with the same key.</p>
+        </details>
+        <details>
+          <summary>Does it need internet?</summary>
+          <p>Never. The app has no INTERNET permission, and the build fails if that ever changes. This page also loads nothing from third parties.</p>
+        </details>
+        <details>
+          <summary>Why must battery be set to Unrestricted?</summary>
+          <p>Samsung's battery saver can put apps to sleep and delay alarms or stale the widget. Permission health inside the app lists exactly what to change.</p>
+        </details>
+        <details>
+          <summary>Is it safe to install an APK from GitHub?</summary>
+          <p>The full source is public, the build runs on GitHub Actions, and the permissions are minimal. You can read the code, or build it yourself.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Personal Clock · MIT License</span>
+    <nav aria-label="Footer">
+      <a href="https://github.com/sarail19th/mobile-clock">GitHub</a>
+      <a href="https://github.com/sarail19th/mobile-clock/releases/tag/latest">Releases</a>
+      <a href="https://github.com/sarail19th/mobile-clock/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a>
+      <a href="https://github.com/sarail19th/mobile-clock/issues">Report an issue</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>
