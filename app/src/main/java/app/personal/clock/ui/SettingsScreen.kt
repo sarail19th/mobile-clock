@@ -238,6 +238,14 @@ fun SettingsScreen(onBack: () -> Unit) {
             @Suppress("DEPRECATION")
             val version = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
             Hint("Version $version · fully offline: this app has no network permission, account or analytics.")
+            // Read-only reference for layout work: what this phone's display looks like to the app.
+            val dispCfg = ctx.resources.configuration
+            val dispMetrics = ctx.resources.displayMetrics
+            Hint(
+                "Display: ${dispCfg.screenWidthDp} dp wide (${dispMetrics.widthPixels} px) \u00B7 font scale " +
+                    String.format(Locale.US, "%.2f", dispCfg.fontScale) + " \u00B7 " +
+                    String.format(Locale.US, "%.2f", dispMetrics.density) + " px per dp",
+            )
             Hint("Widget fonts: Clean (DM Sans), Rounded (Nunito), Cute (Fredoka), Soft (Quicksand), Mono (JetBrains Mono), Serif (Playfair Display), Condensed (Barlow Condensed), Thin (Poppins), all under the SIL Open Font License 1.1 (see /licenses in the source). \"System\" uses your phone's own font.")
         }
         Column(Modifier.padding(bottom = 24.dp)) {}
