@@ -76,6 +76,9 @@ holiday skip with calendar synced / disabled / permission denied.
 
 - Timers (built, owner check pending): the saved-timer list is headed "Your timers"; each card has a pencil (edit length/label via `TimerDialog`; saving resets the timer through `TimerController.update`) and a **Reorder** mode with up/down buttons (`Store.moveTimer`; list order = stored order). `MoveButton` lives in `ui/Common.kt`. The progress ring on each timer card is the single play/pause button (the separate round button was removed); status text (Ready/Paused/%) sits under the time.
 
+- Alarm editor time entry (owner-requested): typing (`TimeInput`) is the default; a "Pick on dial" / "Type time" button switches to the Material dial (`TimePicker`) on the same `TimePickerState`; the choice is remembered in the `ui` prefs (`alarm_time_dial`). Scroll wheels were offered but not built.
+- The ungrouped alarms section is titled "No group" (so it can't clash with a group named Other) and has an on/off switch like real groups.
+
 ## 6. Known limits and honest caveats
 - `assets/th_holidays.json` was **compiled by hand, not from an official source**; entries marked `provisional` (2027 lunar/substitute days) are estimates. Refresh yearly (README reminder). Only Thailand has a built-in list; other countries rely on the phone's holiday calendar or custom days.
   To add a country: `assets/holidays_xx.json` in the same format, from an official source.

@@ -47,6 +47,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -320,6 +321,9 @@ private fun AlarmEditor(
     val ctx = LocalContext.current
     var label by remember { mutableStateOf(alarm.label) }
     val timeState = rememberTimePickerState(initialHour = alarm.hour, initialMinute = alarm.minute, is24Hour = true)
+    // Typing is the default; the owner can switch to the clock dial and the choice is remembered.
+    val timePrefs = remember { ctx.getSharedPreferences("ui", 0) }
+    var useDial by remember { mutableStateOf(timePrefs.getBoolean("alarm_time_dial", false)) }
     var days by remember { mutableIntStateOf(alarm.days) }
     var vibrate by remember { mutableStateOf(alarm.vibrate) }
     var skip by remember { mutableStateOf(alarm.skipHolidays) }
@@ -368,8 +372,19 @@ private fun AlarmEditor(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(if (alarm.id == 0) "New alarm" else "Edit alarm", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TimeInput(state = timeState) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (alarm.id == 0) "New alarm" else "Edit alarm",
+                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = {
+                useDial = !useDial
+                timePrefs.edit().putBoolean("alarm_time_dial", useDial).apply()
+            }) { Text(if (useDial) "Type time" else "Pick on dial") }
+        }
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            if (useDial) TimePicker(state = timeState) else TimeInput(state = timeState)
+        }
         Hint(
             if (days == 0) "Rings once, at the next ${"%02d:%02d".format(timeState.hour, timeState.minute)}."
             else "Rings at ${"%02d:%02d".format(timeState.hour, timeState.minute)} · ${daysSummary(days)}",
