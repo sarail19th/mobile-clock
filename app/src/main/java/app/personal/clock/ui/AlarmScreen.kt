@@ -162,7 +162,10 @@ fun AlarmScreen(onSettings: () -> Unit) {
                                 onToggleCollapse = { toggleCollapsed(group) },
                                 // One switch per section, including "No group" (the alarms with no group).
                                 onToggleAll = { on ->
-                                    members.forEach { store.upsertAlarm(it.copy(enabled = on)) }
+                                    members.forEach {
+                                        store.upsertAlarm(it.copy(enabled = on))
+                                        if (!on) AlarmScheduler.silence(ctx, it.id)
+                                    }
                                     refresh()
                                 },
                             )
@@ -174,6 +177,7 @@ fun AlarmScreen(onSettings: () -> Unit) {
                                 a, is24,
                                 onToggle = { on ->
                                     store.upsertAlarm(a.copy(enabled = on))
+                                    if (!on) AlarmScheduler.silence(ctx, a.id)
                                     refresh()
                                 },
                                 onClick = { editing = a },
@@ -213,6 +217,7 @@ fun AlarmScreen(onSettings: () -> Unit) {
                 },
                 onDelete = {
                     AlarmScheduler.cancel(ctx, e.id)
+                    AlarmScheduler.silence(ctx, e.id)
                     store.deleteAlarm(e.id)
                     editing = null
                     refresh()

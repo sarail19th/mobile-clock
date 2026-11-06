@@ -94,6 +94,18 @@ object AlarmScheduler {
         alarmManager.cancel(pi(ctx, ACTION_SKIP_NOTICE, RC_SKIP + alarmId))
     }
 
+    /**
+     * The user switched this alarm off (or deleted it): drop a pending snooze and, if it is ringing right now, stop it.
+     * Switching off only cancels the next regular occurrence, so without this a ringing or snoozed alarm kept going.
+     * Not called from [schedule], because a one-shot alarm disables itself the moment it rings.
+     */
+    fun silence(ctx: Context, alarmId: Int) {
+        cancelSnooze(ctx, alarmId)
+        Notifications.cancelSnoozed(ctx)
+        val ringing = RingState.current
+        if (ringing != null && ringing.kind == RingService.KIND_ALARM && ringing.id == alarmId) RingService.dismiss(ctx)
+    }
+
     fun cancelSnooze(ctx: Context, alarmId: Int) {
         am(ctx).cancel(pi(ctx, ACTION_SNOOZE_FIRE, RC_SNOOZE + alarmId))
     }

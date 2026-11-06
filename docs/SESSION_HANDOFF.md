@@ -80,6 +80,8 @@ Acceptance checklist from the original spec on a real device: **alarm rings with
 
 - Owner's phone (design for this; measured with Settings > About > Display): Samsung Galaxy S25+, One UI, Samsung Sans, Bold font off, FHD+ (2340 x 1080), Font size slider at the middle of its 9 steps and Screen zoom at the middle of its 5 steps. Resulting values: **360 dp wide, font scale 1.15, 3.00 px per dp**. Check every new layout at 360 dp and 1.15 (e.g. three chips in a row must fit in 320 dp).
 
+- Switching an alarm off (row switch, group / "No group" switch) or deleting it now also calls `AlarmScheduler.silence`: it cancels a pending snooze and stops the alarm if it is ringing right now (before, only the next regular occurrence was cancelled, so a ringing or snoozed alarm kept going). `silence` is deliberately NOT called from `schedule()`, because a one-shot alarm disables itself the moment it rings.
+
 ## 6. Known limits and honest caveats
 - `assets/th_holidays.json` was **compiled by hand, not from an official source**; entries marked `provisional` (2027 lunar/substitute days) are estimates. Refresh yearly (README reminder). Only Thailand has a built-in list; other countries rely on the phone's holiday calendar or custom days.
   To add a country: `assets/holidays_xx.json` in the same format, from an official source.
