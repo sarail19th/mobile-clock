@@ -409,7 +409,7 @@ private fun AlarmEditor(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             ChoiceChip(selected = days == AlarmItem.WEEKDAYS, onClick = { days = AlarmItem.WEEKDAYS }, label = { Text("Weekdays", maxLines = 1) })
-            ChoiceChip(selected = days == 0x7F, onClick = { days = 0x7F }, label = { Text("Every day", maxLines = 1) })
+            ChoiceChip(selected = days == 0x7F, onClick = { days = 0x7F }, label = { Text("Daily", maxLines = 1) })
             ChoiceChip(selected = days == 0, onClick = { days = 0 }, label = { Text("Once", maxLines = 1) })
         }
 
