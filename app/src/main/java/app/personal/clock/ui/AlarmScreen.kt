@@ -80,6 +80,8 @@ fun AlarmScreen(onSettings: () -> Unit) {
     var alarms by remember { mutableStateOf(store.alarms()) }
     var editing by remember { mutableStateOf<AlarmItem?>(null) }
     val tick by rememberTicker(60_000L)
+    // Faster tick used only to notice a snooze being cancelled from the notification shade (nothing inside the app changes then).
+    val snoozeTick by rememberTicker(2_000L)
     var version by remember { mutableIntStateOf(0) }
     val uiPrefs = remember { ctx.getSharedPreferences("ui", 0) }
     var collapsed by remember { mutableStateOf(uiPrefs.getStringSet("collapsed_groups", emptySet()).orEmpty().toSet()) }
@@ -174,7 +176,7 @@ fun AlarmScreen(onSettings: () -> Unit) {
                     if (!isCollapsed) {
                         items(members, key = { it.id }) { a ->
                             // A pending snooze: shown on the row, with the switch on, so switching off cancels it (even for a one-shot alarm).
-                            val snoozedAt = remember(tick, version) { store.snoozeUntil(a.id).takeIf { it > System.currentTimeMillis() } ?: 0L }
+                            val snoozedAt = remember(snoozeTick, version) { store.snoozeUntil(a.id).takeIf { it > System.currentTimeMillis() } ?: 0L }
                             AlarmRow(
                                 a, is24, snoozedAt, zone,
                                 onToggle = { on ->
