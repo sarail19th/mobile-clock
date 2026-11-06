@@ -13,16 +13,12 @@ The owner wants it **universal** (not Thailand-only): holidays follow the alarm 
 holiday calendar, Thailand also has a built-in list, plus custom skip days.
 
 ## 2. Deployment model (important)
-- **Deploy owner = the session that owns branch `claude/mobile-clock-deployment-rekg1p`** (the Main Deployment session since 2026-11-05; the first build session used `claude/new-session-wg4v13`, now retired). Set in `.github/workflows/build.yml` as `DEPLOY_BRANCH`. If the new
-  Main Deployment session uses another branch, change `DEPLOY_BRANCH` (or merge to `main`, which also publishes) in the same commit.
+- **`main` is the default branch and the only publishing branch** (`DEPLOY_BRANCH: main` in `.github/workflows/build.yml`). Created 2026-11-05 by the Main Deployment session from its work branch; the first build session's branch `claude/new-session-wg4v13` and the design session's `claude/quirky-albattani-cw4dcm` were fully merged and retired. Claude sessions are given their own auto-named `claude/...` branch: work and push there (it runs CI but does not publish), then, once the owner has approved, fast-forward `main` to it (`git push origin HEAD:main`) to publish. Never edit `DEPLOY_BRANCH` to point at a session branch.
 - Every push runs CI: unit tests → `assembleRelease` → "no INTERNET" check → APK as a workflow artifact. **Only the deploy branch (or `main`)**
   also refreshes the rolling pre-release **`latest`** (https://github.com/sarail19th/mobile-clock/releases/tag/latest, file `PersonalClock-latest.apk`).
   The owner installs that APK over the old one. Tags `v*` make a numbered release.
-- **Other sessions must work in git worktrees on their own branches** and hand work over; they never publish. (The owner's rule.) A design/docs session
-  uses branch `claude/quirky-albattani-cw4dcm` (adds LICENSE, THIRD_PARTY_NOTICES.md, docs/screenshots/README.md, README edits). It has not been merged here. It asked
-  that landing-page copy promising "any country via your phone calendar, plus your own days off" not ship before the universal holiday feature,
-  which now exists (verify with the owner).
-- There is **no `main` branch yet** and **no pull request**: the owner has not asked for one. Do not open a PR unless asked.
+- **Other sessions must work in git worktrees on their own branches** and hand work over; they never publish. (The owner's rule.) Sessions only push to `main` when the Main Deployment role is theirs and the owner has approved the change.
+- There is **no pull request** workflow: the owner has not asked for one. Do not open a PR unless asked.
 - `versionCode` = the CI run number (monotonic, so updates always install). `versionName` = `1.0.<run>`.
 - CI cancels an in-progress run when you push again to the same branch (a "cancelled" run is normal). While publishing, the release can briefly have
   **zero assets** (old file removed, new one not yet uploaded): wait for the job to finish before telling the owner to install.

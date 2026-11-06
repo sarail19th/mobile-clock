@@ -124,7 +124,7 @@ Only the *Classic* layout with the *System* font is a live `TextClock`. Every ot
 
 ## Who deploys
 
-One session is the **deploy owner** (branch `claude/new-session-wg4v13`, set as `DEPLOY_BRANCH` in `.github/workflows/build.yml`). Only pushes to that branch (or `main`) update the rolling **latest** release the phone downloads. Anyone else (other Claude sessions, contributors) works in a **git worktree on their own branch**, e.g. `git worktree add ../clock-feature -b my-feature`, and hands the result over; their pushes still run CI and upload an APK as a workflow artifact, but never touch the release page.
+**`main` is the default branch and the only branch that publishes.** A push to `main` (or a `v*` tag) updates the rolling **latest** release the phone downloads. Every other branch (Claude sessions, contributors) works on its own branch, e.g. `git worktree add ../clock-feature -b my-feature`; their pushes still run CI and upload an APK as a workflow artifact, but never touch the release page. When a change is ready and approved, it is merged (fast-forwarded) into `main`, which publishes it. `DEPLOY_BRANCH` in `.github/workflows/build.yml` names the publishing branch.
 
 ## Development
 
