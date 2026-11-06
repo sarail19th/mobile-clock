@@ -147,7 +147,7 @@ fun AlarmScreen(onSettings: () -> Unit) {
                         Modifier.padding(top = 8.dp, start = 4.dp),
                     )
                 }
-                // Grouped alarms get a header with one switch for the whole group; ungrouped ones sit under "Other".
+                // Grouped alarms get a header with one switch for the whole group; ungrouped ones sit under "No group" (not "Other", so it never clashes with a group someone names Other).
                 val grouped = alarms.groupBy { it.group.trim() }
                 val anyGroup = grouped.keys.any { it.isNotEmpty() }
                 grouped.forEach { (group, members) ->
@@ -155,11 +155,11 @@ fun AlarmScreen(onSettings: () -> Unit) {
                     if (anyGroup) {
                         item(key = "group:$group") {
                             GroupHeader(
-                                name = group.ifEmpty { "Other" },
+                                name = group.ifEmpty { "No group" },
                                 members = members,
                                 collapsed = isCollapsed,
                                 onToggleCollapse = { toggleCollapsed(group) },
-                                // One switch per section, including "Other" (the alarms with no group).
+                                // One switch per section, including "No group" (the alarms with no group).
                                 onToggleAll = { on ->
                                     members.forEach { store.upsertAlarm(it.copy(enabled = on)) }
                                     refresh()
