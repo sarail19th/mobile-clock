@@ -159,8 +159,8 @@ fun AlarmScreen(onSettings: () -> Unit) {
                                 members = members,
                                 collapsed = isCollapsed,
                                 onToggleCollapse = { toggleCollapsed(group) },
-                                // Only real groups switch together; "Other" alarms are independent.
-                                onToggleAll = if (group.isEmpty()) null else { on ->
+                                // One switch per section, including "Other" (the alarms with no group).
+                                onToggleAll = { on ->
                                     members.forEach { store.upsertAlarm(it.copy(enabled = on)) }
                                     refresh()
                                 },
