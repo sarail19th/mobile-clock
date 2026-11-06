@@ -82,6 +82,8 @@ Acceptance checklist from the original spec on a real device: **alarm rings with
 
 - Switching an alarm off (row switch, group / "No group" switch) or deleting it now also calls `AlarmScheduler.silence`: it cancels a pending snooze and stops the alarm if it is ringing right now (before, only the next regular occurrence was cancelled, so a ringing or snoozed alarm kept going). `silence` is deliberately NOT called from `schedule()`, because a one-shot alarm disables itself the moment it rings.
 
+- Snoozes: `Store.snoozeUntil/setSnoozeUntil/clearSnooze` persist a pending snooze per alarm. The Alarm tab shows "Snoozed until HH:mm" with the switch ON (so switching it off cancels the snooze, which matters for one-shot alarms because they switch themselves off as they ring); the "Snoozed" notification is ongoing, one per alarm, with a **Cancel snooze** button (`ACTION_CANCEL_SNOOZE`); `rescheduleAll` re-registers a still-pending snooze after a reboot.
+
 ## 6. Known limits and honest caveats
 - `assets/th_holidays.json` was **compiled by hand, not from an official source**; entries marked `provisional` (2027 lunar/substitute days) are estimates. Refresh yearly (README reminder). Only Thailand has a built-in list; other countries rely on the phone's holiday calendar or custom days.
   To add a country: `assets/holidays_xx.json` in the same format, from an official source.

@@ -219,7 +219,7 @@ class RingService : Service() {
         if (ring != null && ring.kind == KIND_ALARM && ring.canSnooze) {
             val at = AlarmScheduler.scheduleSnooze(this, ring.id, ring.snoozeMinutes)
             val whenText = timeAt(at)
-            Notifications.postSnoozed(this, ring.label, whenText)
+            Notifications.postSnoozed(this, ring.id, ring.label, whenText)
         }
         finishRinging()
     }
@@ -228,7 +228,7 @@ class RingService : Service() {
         val ring = info
         if (ring != null && ring.kind == KIND_ALARM) {
             AlarmScheduler.cancelSnooze(this, ring.id)
-            Notifications.cancelSnoozed(this)
+            Notifications.cancelSnoozed(this, ring.id)
         }
         finishRinging()
     }

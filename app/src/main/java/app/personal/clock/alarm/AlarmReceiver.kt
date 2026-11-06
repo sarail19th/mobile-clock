@@ -17,7 +17,14 @@ class AlarmReceiver : BroadcastReceiver() {
             AlarmScheduler.ACTION_FIRE -> onFire(ctx, intent)
             AlarmScheduler.ACTION_SNOOZE_FIRE -> {
                 val id = intent.getIntExtra(AlarmScheduler.EXTRA_ID, -1)
+                Store.get(ctx).clearSnooze(id)
+                Notifications.cancelSnoozed(ctx, id)
                 if (Store.get(ctx).alarm(id) != null) RingService.start(ctx, RingService.KIND_ALARM, id)
+            }
+            AlarmScheduler.ACTION_CANCEL_SNOOZE -> {
+                val id = intent.getIntExtra(AlarmScheduler.EXTRA_ID, -1)
+                AlarmScheduler.cancelSnooze(ctx, id)
+                Notifications.cancelSnoozed(ctx, id)
             }
             AlarmScheduler.ACTION_SKIP_NOTICE -> onSkipNotice(ctx, intent)
             AlarmScheduler.ACTION_WIDGET_TICK -> ClockWidgetProvider.updateAll(ctx) // also re-arms the next minute

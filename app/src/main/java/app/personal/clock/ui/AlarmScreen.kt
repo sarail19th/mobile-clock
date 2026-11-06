@@ -173,8 +173,10 @@ fun AlarmScreen(onSettings: () -> Unit) {
                     }
                     if (!isCollapsed) {
                         items(members, key = { it.id }) { a ->
+                            // A pending snooze: shown on the row, with the switch on, so switching off cancels it (even for a one-shot alarm).
+                            val snoozedAt = remember(tick, version) { store.snoozeUntil(a.id).takeIf { it > System.currentTimeMillis() } ?: 0L }
                             AlarmRow(
-                                a, is24,
+                                a, is24, snoozedAt, zone,
                                 onToggle = { on ->
                                     store.upsertAlarm(a.copy(enabled = on))
                                     if (!on) AlarmScheduler.silence(ctx, a.id)
@@ -257,7 +259,7 @@ private fun GroupHeader(
 }
 
 @Composable
-private fun AlarmRow(a: AlarmItem, is24: Boolean, onToggle: (Boolean) -> Unit, onClick: () -> Unit) {
+private fun AlarmRow(a: AlarmItem, is24: Boolean, snoozedAt: Long, zone: java.time.ZoneId, onToggle: (Boolean) -> Unit, onClick: () -> Unit) {
     val alpha = if (a.enabled) 1f else 0.55f
     Card(
         onClick = onClick,
@@ -277,6 +279,13 @@ private fun AlarmRow(a: AlarmItem, is24: Boolean, onToggle: (Boolean) -> Unit, o
                     style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                 )
+                if (snoozedAt > 0L) {
+                    val at = java.time.Instant.ofEpochMilli(snoozedAt).atZone(zone)
+                    Text(
+                        "Snoozed until " + formatHm(at.hour, at.minute, is24),
+                        fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 if (!a.isOneShot) DayDots(a.days)
                 if ((a.skipHolidays || a.skipCustomDays) && !a.isOneShot) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -292,7 +301,7 @@ private fun AlarmRow(a: AlarmItem, is24: Boolean, onToggle: (Boolean) -> Unit, o
                     }
                 }
             }
-            Switch(checked = a.enabled, onCheckedChange = onToggle)
+            Switch(checked = a.enabled || snoozedAt > 0L, onCheckedChange = onToggle)
         }
     }
 }

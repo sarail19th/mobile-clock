@@ -24,6 +24,7 @@ object AlarmScheduler {
     const val ACTION_FIRE = "app.personal.clock.action.ALARM_FIRE"
     const val ACTION_SNOOZE_FIRE = "app.personal.clock.action.ALARM_SNOOZE_FIRE"
     const val ACTION_SKIP_NOTICE = "app.personal.clock.action.ALARM_SKIP_NOTICE"
+    const val ACTION_CANCEL_SNOOZE = "app.personal.clock.action.ALARM_CANCEL_SNOOZE"
     const val ACTION_TIMER_FIRE = "app.personal.clock.action.TIMER_FIRE"
     const val ACTION_WIDGET_TICK = "app.personal.clock.action.WIDGET_TICK"
 
@@ -37,6 +38,7 @@ object AlarmScheduler {
     private const val RC_SKIP = 2_000_000
     private const val RC_TIMER = 3_000_000
     private const val RC_WIDGET_TICK = 4_000_000
+    private const val RC_CANCEL_SNOOZE = 5_000_000
 
     data class NextInfo(val alarm: AlarmItem, val at: java.time.ZonedDateTime, val skipped: List<AlarmMath.Skipped>)
 
@@ -90,7 +92,7 @@ object AlarmScheduler {
     fun cancel(ctx: Context, alarmId: Int) {
         val alarmManager = am(ctx)
         alarmManager.cancel(pi(ctx, ACTION_FIRE, RC_FIRE + alarmId))
-        alarmManager.cancel(pi(ctx, ACTION_SNOOZE_FIRE, RC_SNOOZE + alarmId))
+        cancelSnooze(ctx, alarmId)
         alarmManager.cancel(pi(ctx, ACTION_SKIP_NOTICE, RC_SKIP + alarmId))
     }
 
@@ -101,24 +103,34 @@ object AlarmScheduler {
      */
     fun silence(ctx: Context, alarmId: Int) {
         cancelSnooze(ctx, alarmId)
-        Notifications.cancelSnoozed(ctx)
+        Notifications.cancelSnoozed(ctx, alarmId)
         val ringing = RingState.current
         if (ringing != null && ringing.kind == RingService.KIND_ALARM && ringing.id == alarmId) RingService.dismiss(ctx)
     }
 
     fun cancelSnooze(ctx: Context, alarmId: Int) {
         am(ctx).cancel(pi(ctx, ACTION_SNOOZE_FIRE, RC_SNOOZE + alarmId))
+        Store.get(ctx).clearSnooze(alarmId)
     }
+
+    /** The "Cancel snooze" button of the Snoozed notification. */
+    fun cancelSnoozePendingIntent(ctx: Context, alarmId: Int): PendingIntent =
+        pi(ctx, ACTION_CANCEL_SNOOZE, RC_CANCEL_SNOOZE + alarmId) { putExtra(EXTRA_ID, alarmId) }
 
     /** One-shot re-ring [minutes] from now. Returns the trigger time in epoch millis. */
     fun scheduleSnooze(ctx: Context, alarmId: Int, minutes: Int): Long {
         val at = System.currentTimeMillis() + minutes * 60_000L
+        Store.get(ctx).setSnoozeUntil(alarmId, at)
+        registerSnooze(ctx, alarmId, at)
+        return at
+    }
+
+    private fun registerSnooze(ctx: Context, alarmId: Int, at: Long) {
         val p = pi(ctx, ACTION_SNOOZE_FIRE, RC_SNOOZE + alarmId) {
             putExtra(EXTRA_ID, alarmId)
             putExtra(EXTRA_TRIGGER_AT, at)
         }
         am(ctx).setAlarmClock(AlarmManager.AlarmClockInfo(at, Notifications.openApp(ctx, Tabs.ALARM)), p)
-        return at
     }
 
     fun widgetTickPendingIntent(ctx: Context): PendingIntent = pi(ctx, ACTION_WIDGET_TICK, RC_WIDGET_TICK)
@@ -141,6 +153,12 @@ object AlarmScheduler {
     fun rescheduleAll(ctx: Context) {
         val store = Store.get(ctx)
         store.alarms().forEach { schedule(ctx, it) }
+        // A snooze still pending (e.g. after a reboot cleared the system's alarms) is registered again; an expired one is forgotten.
+        val now = System.currentTimeMillis()
+        store.alarms().forEach { a ->
+            val until = store.snoozeUntil(a.id)
+            if (until > now) registerSnooze(ctx, a.id, until) else if (until != 0L) store.clearSnooze(a.id)
+        }
         ClockWidgetProvider.updateAll(ctx)
     }
 

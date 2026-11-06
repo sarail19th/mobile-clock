@@ -46,6 +46,11 @@ class Store private constructor(ctx: Context) {
 
     fun deleteAlarm(id: Int) = synchronized(LOCK) { writeAlarms(readAlarms().filterNot { it.id == id }) }
 
+    // Pending snoozes: when the alarm will ring again (epoch ms). Kept so the Alarm tab can show and cancel it, and so it survives a reboot.
+    fun snoozeUntil(alarmId: Int): Long = sp.getLong(K_SNOOZE_PREFIX + alarmId, 0L)
+    fun setSnoozeUntil(alarmId: Int, at: Long) = sp.edit().putLong(K_SNOOZE_PREFIX + alarmId, at).apply()
+    fun clearSnooze(alarmId: Int) = sp.edit().remove(K_SNOOZE_PREFIX + alarmId).apply()
+
     fun replaceAlarms(list: List<AlarmItem>) = synchronized(LOCK) {
         writeAlarms(list)
         val maxId = list.maxOfOrNull { it.id } ?: 0
@@ -227,6 +232,7 @@ class Store private constructor(ctx: Context) {
         private const val FILE = "clock_store"
         private val LOCK = Any()
         private const val K_ALARMS = "alarms"
+        private const val K_SNOOZE_PREFIX = "snooze_until_"
         private const val K_NEXT_ID = "next_id"
         private const val K_SEEDED = "seeded"
         private const val K_SETTINGS = "settings"

@@ -88,18 +88,20 @@ object Notifications {
         nm(ctx).notify(ID_MISSED + (id % 400), n)
     }
 
-    fun postSnoozed(ctx: Context, label: String, untilText: String) {
+    /** Stays until the alarm rings again or the user cancels the snooze (one notification per alarm). */
+    fun postSnoozed(ctx: Context, alarmId: Int, label: String, untilText: String) {
         val n = Notification.Builder(ctx, CH_INFO)
             .setSmallIcon(smallIcon(ctx))
             .setContentTitle("Snoozed")
-            .setContentText("$label rings again at $untilText")
-            .setAutoCancel(true)
+            .setContentText("${label.ifBlank { "Alarm" }} rings again at $untilText")
+            .setOngoing(true)
             .setContentIntent(openApp(ctx, Tabs.ALARM))
+            .addAction(Notification.Action.Builder(null, "Cancel snooze", AlarmScheduler.cancelSnoozePendingIntent(ctx, alarmId)).build())
             .build()
-        nm(ctx).notify(ID_SNOOZED, n)
+        nm(ctx).notify(ID_SNOOZED + (alarmId % 90), n)
     }
 
-    fun cancelSnoozed(ctx: Context) = nm(ctx).cancel(ID_SNOOZED)
+    fun cancelSnoozed(ctx: Context, alarmId: Int) = nm(ctx).cancel(ID_SNOOZED + (alarmId % 90))
 
     // ------------------------------------------------------------------ timers
 
