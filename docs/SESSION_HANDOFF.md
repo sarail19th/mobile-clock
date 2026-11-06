@@ -79,7 +79,7 @@ holiday skip with calendar synced / disabled / permission denied.
 - Alarm editor time entry (owner-requested): typing (`TimeInput`) is the default; a "Pick on dial" / "Type time" button switches to the Material dial (`TimePicker`) on the same `TimePickerState`; the choice is remembered in the `ui` prefs (`alarm_time_dial`). Scroll wheels were offered but not built.
 - The ungrouped alarms section is titled "No group" (so it can't clash with a group named Other) and has an on/off switch like real groups.
 
-- Owner's phone (design for this): Samsung Galaxy S25+, One UI, Samsung Sans, Bold font off, Font size slider at the middle of its 9 steps, Screen zoom at the middle of its 5 steps; screenshots are 1080 x 2200 px (about 411 dp wide). The app's behaviour earlier suggested a font scale above 1.15, so check Settings > About, which now shows the real display width, font scale and density.
+- Owner's phone (design for this; measured with Settings > About > Display): Samsung Galaxy S25+, One UI, Samsung Sans, Bold font off, FHD+ (2340 x 1080), Font size slider at the middle of its 9 steps and Screen zoom at the middle of its 5 steps. Resulting values: **360 dp wide, font scale 1.15, 3.00 px per dp**. Check every new layout at 360 dp and 1.15 (e.g. three chips in a row must fit in 320 dp).
 
 ## 6. Known limits and honest caveats
 - `assets/th_holidays.json` was **compiled by hand, not from an official source**; entries marked `provisional` (2027 lunar/substitute days) are estimates. Refresh yearly (README reminder). Only Thailand has a built-in list; other countries rely on the phone's holiday calendar or custom days.
