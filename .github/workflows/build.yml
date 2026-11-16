@@ -3,6 +3,9 @@ name: Build APK
 on:
   push:
     branches: [main, "claude/**"]
+    # A push that only changes the landing page (site/) must not rebuild or re-publish the APK.
+    # Pushes that also touch anything else still build; tag pushes (v*) are not path-filtered.
+    paths-ignore: ["site/**"]
     tags: ["v*"]
   workflow_dispatch:
 
