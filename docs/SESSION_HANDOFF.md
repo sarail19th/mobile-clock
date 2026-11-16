@@ -17,6 +17,7 @@ holiday calendar, Thailand also has a built-in list, plus custom skip days.
 - Every push runs CI: unit tests → `assembleRelease` → "no INTERNET" check → APK as a workflow artifact. **Only the deploy branch (or `main`)**
   also refreshes the rolling pre-release **`latest`** (https://github.com/sarail19th/mobile-clock/releases/tag/latest, file `PersonalClock-latest.apk`).
   The owner installs that APK over the old one. Tags `v*` make a numbered release.
+- A push that **only** changes `site/` (the landing page, section 9) does not run `build.yml` (`paths-ignore: ["site/**"]`), so it cannot rebuild or re-publish the APK. A push that also touches anything else (including `docs/`) still builds.
 - **Other sessions must work in git worktrees on their own branches** and hand work over; they never publish. (The owner's rule.) Sessions only push to `main` when the Main Deployment role is theirs and the owner has approved the change.
 - There is **no pull request** workflow: the owner has not asked for one. Do not open a PR unless asked.
 - `versionCode` = the CI run number (monotonic, so updates always install). `versionName` = `1.0.<run>`.
@@ -98,8 +99,18 @@ Acceptance checklist from the original spec on a real device: **alarm rings with
 
 ## 7. Ideas not built
 Per-alarm custom ringtone volume ramp; more built-in country holiday lists (needs official data); a weekly "check my holiday list is current" reminder; widget size-specific presets; a "next skip" widget line;
-analog hands as live `AnalogClock`; wallpaper-aware preview via `WallpaperManager` (needs permission decision); landing page/screenshots/licence PR from the design session; opening a PR or creating `main`.
+analog hands as live `AnalogClock`; wallpaper-aware preview via `WallpaperManager` (needs permission decision); opening a PR (the owner has not asked for one). Done since: licence (MIT), screenshots, `main`, the landing page (section 9).
 
 ## 8. Design references
 Mockups the owner approved (private to them): https://claude.ai/artifact/XCRvqaSYjn9TecU39oN83z (10 boards: app screens, widget picker, Lines tab, templates).
 The design session also drew Settings mockups for the universal holiday screen (https://claude.ai/artifact/VN9NdPdsPdHehzwTeL5Fed); the implemented UI follows its descriptions in simple Material 3 form.
+
+## 9. Landing page (design session, live)
+Public page: **https://sarail19th.github.io/mobile-clock/** (GitHub Pages, Settings -> Pages -> Source: GitHub Actions, set by the owner). Plain static files in `site/` (`index.html`, `style.css`, `favicon.svg`, `img/`), no build step, no scripts from third parties. The design session owns `site/` and `.github/workflows/pages.yml`; app sessions should leave them alone except to keep the claims below true.
+- **Deploy**: `pages.yml` publishes `site/` on a push to `main` that touches `site/**`, or by hand (Actions -> "Deploy landing page" -> Run workflow). **If a deploy run fails, do not use "Re-run failed jobs"**: it leaves a second `github-pages` artifact and fails again ("Multiple artifacts named github-pages"). Start a fresh run with Run workflow instead.
+- **Caching**: GitHub Pages caches files for about 10 minutes and phones keep stylesheets, so `index.html` links `style.css?v=<date letter>`. Bump that value whenever `style.css` changes, or visitors get the new page with the old stylesheet.
+- **Theme**: follows the device (light/dark) and has a sun/moon toggle (`data-theme` on `<html>`, remembered in `localStorage`). Each app screenshot has a light file and a `dark-*.jpg` twin (`.shot-light` / `.shot-dark`); the widget-home and the two widget-editor shots exist in light only.
+- **Images**: `site/img/` holds resized copies (`convert -strip -resize 560x -quality 80`) of `docs/screenshots/` (light) and of the owner's dark-mode screenshots taken with the in-app Theme set to Dark. They show the owner's own labels (alarm "Timesheet", timers "Dry Wash" and "Fridge Boiled Egg"); the owner is fine with that.
+- **Download button** points to `https://github.com/sarail19th/mobile-clock/releases/download/latest/PersonalClock-latest.apk` (the rolling pre-release asset name must stay `PersonalClock-latest.apk`). The "18 MB" label is approximate; update it if the APK size changes a lot.
+- **Claims on the page that must stay true** (change the page, not the app, if the app changes): Android 12+ (`minSdk 31`), tested on a Galaxy S25+, 8 widget templates, 9 fonts, 247 world cities, no INTERNET permission, no account, no analytics, holidays for any country through the phone calendar plus built-in Thai list plus custom days, alarm rings with the screen off and after a reboot (owner-confirmed, with the secure-lock caveat in section 5). The FAQ also says iPhone is unsupported and the app is not on the Play Store.
+- To refresh screenshots: replace the files in `docs/screenshots/` (README) and the copies in `site/img/`, bump the `?v=` value, push to `main`.
