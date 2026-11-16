@@ -88,15 +88,15 @@ object Notifications {
         nm(ctx).notify(ID_MISSED + (id % 400), n)
     }
 
-    /** Stays until the alarm rings again or the user cancels the snooze (one notification per alarm). */
+    /** Stays until the alarm rings again or the user cancels the snooze (one notification per alarm). The button is called Dismiss, like the ring screen's: it means the alarm will not ring again for this occurrence. */
     fun postSnoozed(ctx: Context, alarmId: Int, label: String, untilText: String) {
         val n = Notification.Builder(ctx, CH_INFO)
             .setSmallIcon(smallIcon(ctx))
-            .setContentTitle("Snoozed")
+            .setContentTitle("Snoozed until $untilText")
             .setContentText("${label.ifBlank { "Alarm" }} rings again at $untilText")
             .setOngoing(true)
             .setContentIntent(openApp(ctx, Tabs.ALARM))
-            .addAction(Notification.Action.Builder(null, "Cancel snooze", AlarmScheduler.cancelSnoozePendingIntent(ctx, alarmId)).build())
+            .addAction(Notification.Action.Builder(null, "Dismiss", AlarmScheduler.cancelSnoozePendingIntent(ctx, alarmId)).build())
             .build()
         nm(ctx).notify(ID_SNOOZED + (alarmId % 90), n)
     }

@@ -113,7 +113,7 @@ object AlarmScheduler {
         Store.get(ctx).clearSnooze(alarmId)
     }
 
-    /** The "Cancel snooze" button of the Snoozed notification. */
+    /** The "Dismiss" button of the Snoozed notification (it cancels the pending snooze). */
     fun cancelSnoozePendingIntent(ctx: Context, alarmId: Int): PendingIntent =
         pi(ctx, ACTION_CANCEL_SNOOZE, RC_CANCEL_SNOOZE + alarmId) { putExtra(EXTRA_ID, alarmId) }
 
