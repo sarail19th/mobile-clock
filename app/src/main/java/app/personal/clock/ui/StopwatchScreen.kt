@@ -112,8 +112,8 @@ fun StopwatchScreen(onSettings: () -> Unit) {
                         Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("$n", Modifier.size(width = 40.dp, height = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("+${Fmt.stopwatch(delta)}", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            if (delta == best) Pill("Best", Color(0xFFE0F2E6), Color(0xFF17683A), Modifier.padding(start = 8.dp))
-                            if (delta == slowest && delta != best) Pill("Slowest", Color(0xFFFBE9E7), Color(0xFF8C1D18), Modifier.padding(start = 8.dp))
+                            if (delta == best) Pill("Best", statusColors().okBg, statusColors().okFg, Modifier.padding(start = 8.dp))
+                            if (delta == slowest && delta != best) Pill("Slowest", statusColors().badBg, statusColors().badFg, Modifier.padding(start = 8.dp))
                             Box(Modifier.weight(1f))
                             Text(Fmt.stopwatch(total), fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

@@ -2,6 +2,7 @@ package app.personal.clock.data
 
 import app.personal.clock.core.AlarmItem
 import app.personal.clock.core.CustomDay
+import app.personal.clock.core.ThemePref
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -107,5 +108,22 @@ class ModelsTest {
     @Test fun safeOrderFallsBackToTheDefault() {
         assertEquals("TDAW", WidgetConfig(order = "XXXX").safeOrder)
         assertEquals("DATW", WidgetConfig(order = "DATW").safeOrder)
+    }
+
+    @Test fun themeDefaultsToSystemAndSurvivesARoundTrip() {
+        assertEquals(ThemePref.SYSTEM, AppSettings.fromJson(JSONObject(oldSettings)).theme) // older saves have no theme
+        assertEquals(ThemePref.DARK, AppSettings.fromJson(AppSettings(theme = ThemePref.DARK).toJson()).theme)
+        assertEquals(ThemePref.LIGHT, AppSettings.fromJson(AppSettings(theme = ThemePref.LIGHT).toJson()).theme)
+        assertEquals(ThemePref.SYSTEM, AppSettings.fromJson(JSONObject("""{"theme":7}""")).theme)
+        assertEquals(ThemePref.SYSTEM, AppSettings.fromJson(JSONObject("""{"theme":-1}""")).theme)
+    }
+
+    @Test fun themeChoiceMapsToTheDarkFlag() {
+        assertTrue(ThemePref.isDark(ThemePref.SYSTEM, systemDark = true))
+        assertFalse(ThemePref.isDark(ThemePref.SYSTEM, systemDark = false))
+        assertFalse(ThemePref.isDark(ThemePref.LIGHT, systemDark = true))
+        assertTrue(ThemePref.isDark(ThemePref.DARK, systemDark = false))
+        assertTrue(ThemePref.isDark(9, systemDark = true)) // unknown value follows the phone
+        assertFalse(ThemePref.isDark(9, systemDark = false))
     }
 }

@@ -160,7 +160,7 @@ fun WorldScreen(onSettings: () -> Unit) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                             if (isHome) Pill("Home", MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, Modifier.padding(start = 8.dp))
-                                            if (dst) Pill("DST", Color(0xFFFFF1D6), Color(0xFF7A4A00), Modifier.padding(start = 6.dp))
+                                            if (dst) Pill("DST", statusColors().warnBg, statusColors().warnFg, Modifier.padding(start = 6.dp))
                                         }
                                         Hint(
                                             (ZoneCountries.of(id)?.let { it.name + " \u00B7 " } ?: "") + "${Fmt.utcOffset(zdt.offset.totalSeconds)} · $dayText" +

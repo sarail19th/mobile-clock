@@ -66,6 +66,7 @@ import app.personal.clock.alarm.AlarmScheduler
 import app.personal.clock.alarm.Notifications
 import app.personal.clock.alarm.RingService
 import app.personal.clock.core.Fmt
+import app.personal.clock.core.ThemePref
 import app.personal.clock.data.AppSettings
 import app.personal.clock.data.Backup
 import app.personal.clock.data.Store
@@ -160,7 +161,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         if (page < 0) {
             val failing = healthList.count { !it.ok && !it.optional }
             SettingsRow(PAGE_TITLES[0], "Home time zone: ${settings.zone().id}") { page = 0 }
-            SettingsRow(PAGE_TITLES[1], if (settings.showSecondsInApp) "Seconds shown in the app" else "Seconds hidden") { page = 1 }
+            SettingsRow(PAGE_TITLES[1], (if (settings.showSecondsInApp) "Seconds shown" else "Seconds hidden") + " \u00B7 Theme: " + ThemePref.labels[ThemePref.sanitize(settings.theme)]) { page = 1 }
             SettingsRow(PAGE_TITLES[2], "Snooze ${settings.defaultSnoozeMinutes} min \u00B7 auto-stop ${settings.autoStopMinutes} min") { page = 2 }
             SettingsRow(PAGE_TITLES[3], if (failing == 0) "All set" else "$failing to fix") { page = 3 }
             SettingsRow(PAGE_TITLES[4], "Add a widget and how it works") { page = 4 }
@@ -177,6 +178,20 @@ fun SettingsScreen(onBack: () -> Unit) {
                 Switch(checked = settings.showSecondsInApp, onCheckedChange = { save(settings.copy(showSecondsInApp = it)) })
             }
             Hint("The home-screen widget never shows seconds.")
+            Text("Theme", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ThemePref.labels.forEachIndexed { i, name ->
+                    ChoiceChip(
+                        selected = settings.theme == i,
+                        onClick = {
+                            ThemeMode.set(i)
+                            save(settings.copy(theme = i))
+                        },
+                        label = { Text(name) },
+                    )
+                }
+            }
+            Hint("System follows your phone. Light or Dark changes only this app; the home-screen widgets keep their own look.")
         }
 
         if (page == 2) SettingsCard(null) {
@@ -257,32 +272,34 @@ private fun HealthSummary(items: List<Health>) {
     val failing = items.filter { !it.ok && !it.optional }
     val okCount = items.count { it.ok }
     val good = failing.isEmpty()
+    val sc = statusColors()
     Card(
         Modifier.fillMaxWidth().padding(top = 12.dp),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = if (good) Color(0xFFE0F2E6) else Color(0xFFFFF1D6)),
+        colors = CardDefaults.cardColors(containerColor = if (good) sc.okBg else sc.warnBg),
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(
                     if (good) Icons.Default.Check else Icons.Default.Warning, contentDescription = null,
-                    tint = if (good) Color(0xFF17683A) else Color(0xFF7A4A00),
+                    tint = if (good) sc.okFg else sc.warnFg,
                 )
                 Column(Modifier.weight(1f)) {
                     Text(
                         if (good) "All set: alarms should ring" else "Alarms may not ring: fix ${failing.size}",
-                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFF1B1B1B),
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = sc.text,
                     )
-                    Text("$okCount of ${items.size} checks are OK", fontSize = 13.sp, color = Color(0xFF3A3A3A))
+                    Text("$okCount of ${items.size} checks are OK", fontSize = 13.sp, color = sc.subtext)
                 }
             }
             failing.take(3).forEach { h ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-                        .background(Color.White).padding(start = 14.dp, top = 4.dp, bottom = 4.dp, end = 6.dp),
+                        
+                        .background(sc.rowBg).padding(start = 14.dp, top = 4.dp, bottom = 4.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(h.title, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1B1B1B))
+                    Text(h.title, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = sc.text)
                     OutlinedButton(onClick = h.onFix) { Text(h.action) }
                 }
             }
@@ -304,7 +321,7 @@ private fun SettingsCard(title: String?, content: @Composable () -> Unit) {
 }
 
 private val PAGE_TITLES = listOf(
-    "Time zone & holidays", "Clock display", "Alarm behaviour", "Permission health", "Widget", "Backup", "About",
+    "Time zone & holidays", "Display & theme", "Alarm behaviour", "Permission health", "Widget", "Backup", "About",
 )
 
 /** One row of the short Settings list: title, one-line summary, and an arrow. */

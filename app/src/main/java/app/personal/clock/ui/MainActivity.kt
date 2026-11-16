@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        setupThemeBars()
         Notifications.ensureChannels(this)
         Store.get(this).ensureSeeded()
         // Re-arm everything on every launch (cheap, idempotent) - off the main thread because the first

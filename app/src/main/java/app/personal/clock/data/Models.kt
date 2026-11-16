@@ -1,5 +1,6 @@
 package app.personal.clock.data
 
+import app.personal.clock.core.ThemePref
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.ZoneId
@@ -21,6 +22,8 @@ data class AppSettings(
     val useBuiltinHolidays: Boolean = true,
     /** Phone calendars (ids) the user ticked as holiday calendars. Empty = pick automatically from the region. */
     val calendarIds: List<Long> = emptyList(),
+    /** [ThemePref]: 0 = follow the phone, 1 = light, 2 = dark. Older saves have no value and mean 0. */
+    val theme: Int = ThemePref.SYSTEM,
 ) {
     fun zone(): ZoneId =
         if (followPhoneZone) ZoneId.systemDefault()
@@ -40,6 +43,7 @@ data class AppSettings(
         .put("holidayRegion", holidayRegion)
         .put("useBuiltinHolidays", useBuiltinHolidays)
         .put("calendarIds", JSONArray().also { arr -> calendarIds.forEach { arr.put(it) } })
+        .put("theme", theme)
 
     companion object {
         const val DEFAULT_ZONE = "Asia/Bangkok"
@@ -63,6 +67,7 @@ data class AppSettings(
                 holidayRegion = o.optString("holidayRegion", d.holidayRegion),
                 useBuiltinHolidays = o.optBoolean("useBuiltinHolidays", d.useBuiltinHolidays),
                 calendarIds = if (ids == null) emptyList() else (0 until ids.length()).mapNotNull { runCatching { ids.getLong(it) }.getOrNull() },
+                theme = ThemePref.sanitize(o.optInt("theme", d.theme)),
             )
         }
     }

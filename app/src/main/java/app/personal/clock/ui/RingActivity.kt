@@ -57,7 +57,7 @@ class RingActivity : ComponentActivity() {
         setShowWhenLocked(true)
         setTurnScreenOn(true)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        enableEdgeToEdge()
+        setupThemeBars()
 
         if (RingState.current == null) {
             // Nothing is ringing (e.g. stale full-screen intent): don't leave a dead page on the lock screen.
