@@ -10,6 +10,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,7 +71,7 @@ class RingActivity : ComponentActivity() {
                 if (current != null) {
                     RingScreen(
                         current,
-                        onSnooze = { RingService.snooze(applicationContext) },
+                        onSnooze = { minutes -> RingService.snooze(applicationContext, minutes) },
                         onDismiss = { RingService.dismiss(applicationContext) },
                     )
                 }
@@ -83,7 +86,7 @@ class RingActivity : ComponentActivity() {
 }
 
 @Composable
-private fun RingScreen(info: RingInfo, onSnooze: () -> Unit, onDismiss: () -> Unit) {
+private fun RingScreen(info: RingInfo, onSnooze: (Int) -> Unit, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     val tick by rememberTicker(1_000L)
     val zone = remember { Store.get(ctx).settings().zone() }
@@ -108,8 +111,27 @@ private fun RingScreen(info: RingInfo, onSnooze: () -> Unit, onDismiss: () -> Un
             }
             Column(Modifier.fillMaxWidth().padding(bottom = 48.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (info.canSnooze) {
-                    FilledTonalButton(onClick = onSnooze, modifier = Modifier.fillMaxWidth().height(72.dp)) {
+                    FilledTonalButton(onClick = { onSnooze(0) }, modifier = Modifier.fillMaxWidth().height(72.dp)) {
                         Text("Snooze ${info.snoozeMinutes} min", fontSize = 20.sp)
+                    }
+                    // Longer snoozes: one tap, no menu while the alarm is ringing. The alarm's own length is not repeated here.
+                    val longer = listOf(10, 15, 20, 30).filter { it != info.snoozeMinutes }
+                    if (longer.isNotEmpty()) {
+                        Text(
+                            "Or snooze longer (minutes)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            longer.forEach { m ->
+                                OutlinedButton(
+                                    onClick = { onSnooze(m) },
+                                    modifier = Modifier.weight(1f).height(56.dp),
+                                    contentPadding = PaddingValues(0.dp),
+                                ) { Text("$m", fontSize = 20.sp) }
+                            }
+                        }
                     }
                 }
                 Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(72.dp)) {

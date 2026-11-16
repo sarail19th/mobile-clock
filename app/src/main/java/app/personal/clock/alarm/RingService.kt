@@ -52,7 +52,7 @@ class RingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> begin(intent)
-            ACTION_SNOOZE -> snooze()
+            ACTION_SNOOZE -> snooze(intent.getIntExtra(EXTRA_MINUTES, 0))
             ACTION_DISMISS -> dismiss()
             else -> if (info == null) stopSelf()
         }
@@ -214,10 +214,11 @@ class RingService : Service() {
 
     // ------------------------------------------------------------------ stop paths
 
-    private fun snooze() {
+    /** [minutes] <= 0 means the alarm's own snooze length; the ring screen passes a longer one (10 / 15 / 20 / 30). */
+    private fun snooze(minutes: Int) {
         val ring = info
         if (ring != null && ring.kind == KIND_ALARM && ring.canSnooze) {
-            val at = AlarmScheduler.scheduleSnooze(this, ring.id, ring.snoozeMinutes)
+            val at = AlarmScheduler.scheduleSnooze(this, ring.id, if (minutes > 0) minutes else ring.snoozeMinutes)
             val whenText = timeAt(at)
             Notifications.postSnoozed(this, ring.id, ring.label, whenText)
         }
@@ -275,6 +276,7 @@ class RingService : Service() {
         const val ACTION_DISMISS = "app.personal.clock.action.RING_DISMISS"
         const val EXTRA_KIND = "kind"
         const val EXTRA_ID = "id"
+        const val EXTRA_MINUTES = "minutes"
         const val KIND_ALARM = 0
         const val KIND_TIMER = 1
 
@@ -294,8 +296,9 @@ class RingService : Service() {
             }
         }
 
-        fun snooze(ctx: Context) {
-            ctx.startService(Intent(ctx, RingService::class.java).setAction(ACTION_SNOOZE))
+        /** [minutes] = 0: the alarm's own snooze length. */
+        fun snooze(ctx: Context, minutes: Int = 0) {
+            ctx.startService(Intent(ctx, RingService::class.java).setAction(ACTION_SNOOZE).putExtra(EXTRA_MINUTES, minutes))
         }
 
         fun dismiss(ctx: Context) {

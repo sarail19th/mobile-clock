@@ -84,6 +84,8 @@ Acceptance checklist from the original spec on a real device: **alarm rings with
 
 - Snoozes: `Store.snoozeUntil/setSnoozeUntil/clearSnooze` persist a pending snooze per alarm. The Alarm tab shows "Snoozed until HH:mm" with the switch ON (so switching it off cancels the snooze, which matters for one-shot alarms because they switch themselves off as they ring); the "Snoozed" notification is ongoing, one per alarm, with a **Cancel snooze** button (`ACTION_CANCEL_SNOOZE`); `rescheduleAll` re-registers a still-pending snooze after a reboot.
 
+- Ring screen: below the main "Snooze N min" button there is a "Snooze longer (minutes)" row with 10 / 15 / 20 / 30 (the alarm's own length is left out); they call `RingService.snooze(ctx, minutes)` (`EXTRA_MINUTES`). The notification still only offers the alarm's own snooze length and Dismiss.
+
 ## 6. Known limits and honest caveats
 - `assets/th_holidays.json` was **compiled by hand, not from an official source**; entries marked `provisional` (2027 lunar/substitute days) are estimates. Refresh yearly (README reminder). Only Thailand has a built-in list; other countries rely on the phone's holiday calendar or custom days.
   To add a country: `assets/holidays_xx.json` in the same format, from an official source.
