@@ -7,10 +7,9 @@ First written at the end of the first build session (CI run #24); rewritten by t
 **State when this was written:** `main` is the default and the only publishing branch. The last app build is CI run #78 (swipe-to-delete for alarms), published as the rolling release `latest`. Before doing anything, check that the newest **"Build APK"** run on `main` is green and that `get_release_by_tag latest` says "Automatic build of branch `main`" with that run number. (The newest run on `main` can also be a "Deploy landing page" run, which is the design session's; use `resource_id: build.yml` when listing.)
 
 **Waiting on the owner (nothing is blocked on you):**
-- Test swipe-to-delete on the Alarm tab (swipe left, Undo bar, swipe right does nothing, editor Delete still works).
 - Acceptance tests from the original spec still untested: ring in Do Not Disturb; the 15-minute screen-off test; timer and stopwatch with the screen off; holiday skip with the calendar synced / disabled / permission denied.
 - Snooze checks never reported: a repeating alarm snoozed then switched off, and a pending snooze surviving a reboot. Already passed: a one-shot alarm snoozed then switched off, cancelling the snooze from the notification, and a 15-minute snooze.
-- The renamed snooze notification button ("Dismiss", title "Snoozed until HH:mm") and the swipe-delete were built but not yet reported on.
+- The renamed snooze notification button ("Dismiss", title "Snoozed until HH:mm") was built but not yet reported on. (Swipe-to-delete was tested on the phone and passed on 2026-11-17.)
 - Optional: a Settings screenshot for the README/landing page; make sure the owner has the signing password in their password manager: it was generated for them in the first build session (so it is probably in that session's chat history) and they said they cannot remember it. GitHub secrets cannot be read back; if it is lost the only fix is a new key and one uninstall (export a Backup first).
 
 **Rules of engagement with the owner (their standing preferences):**
@@ -95,7 +94,7 @@ holiday calendar, Thailand also has a built-in list, plus custom skip days.
 | Shared UI | `ChoiceChip` (selected = solid colour + tick) for every option chip; `MoveButton` up/down arrows | confirmed |
 | Alarm editor | Typing is the default time entry; "Pick on dial" / "Type time" toggle (remembered in `ui` prefs `alarm_time_dial`); Weekdays / Daily / Once chips fit on one row at 360 dp | confirmed |
 | Alarm list | "No group" section (was "Other") with its own on/off switch | confirmed |
-| Alarm list | Swipe a row LEFT to delete it (`SwipeToDeleteBox`, `deleteWithUndo`, "Alarm deleted · UNDO" snackbar; Undo re-inserts the same id so it goes to the end of the stored list; the editor's Delete is unchanged) | **built, owner test pending** |
+| Alarm list | Swipe a row LEFT to delete it (`SwipeToDeleteBox`, `deleteWithUndo`, "Alarm deleted · UNDO" snackbar; Undo re-inserts the same id so it goes to the end of the stored list; the editor's Delete is unchanged) | confirmed (2026-11-17) |
 | Alarms | Switching an alarm off or deleting it calls `AlarmScheduler.silence` (stops it if ringing, cancels a pending snooze). NOT called from `schedule()`, because a one-shot alarm disables itself as it rings | confirmed |
 | Snooze | A pending snooze is persisted (`Store.snoozeUntil/setSnoozeUntil/clearSnooze`); the Alarm row shows "Snoozed until HH:mm" with the switch ON so switching it off cancels it (needed for one-shot alarms); `rescheduleAll` re-registers a pending snooze after a reboot | tests 1-2 confirmed, reboot case untested |
 | Snooze | The "Snoozed" notification is ongoing, one per alarm (`ID_SNOOZED + id % 90`), title "Snoozed until HH:mm", button **Dismiss** (`ACTION_CANCEL_SNOOZE`; it was "Cancel snooze", renamed because that can be read as "ring now") | built, not yet reported on |
