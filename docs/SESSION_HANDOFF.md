@@ -89,6 +89,8 @@ Acceptance checklist from the original spec on a real device: **alarm rings with
 
 - Theme override (owner-approved, requested via the design session): Settings > "Display & theme" has System / Light / Dark (`AppSettings.theme`, `core/ThemePref.kt`, observable `ThemeMode` in `ui/Theme.kt`). `ClockTheme` takes its dark flag from it; `setupThemeBars()` (called from every activity's onCreate instead of enableEdgeToEdge) and `ClockTheme`'s effect set the status/navigation bar icon contrast and the window background to follow the override. Fixed pale colours (permission-health card, Best/Slowest pills, DST pill) come from `statusColors()` (light/dark variants). Widgets, the widget editor preview and the World day/night bar are deliberately independent of it. Not done: the start-up splash/window preview still follows the phone's night mode, so a brief light flash on cold start is possible when Dark is forced on a light phone.
 
+- Alarm list: swipe a row to the LEFT to delete it (`SwipeToDeleteBox`, Material `SwipeToDismissBox`; swipe right is disabled). `deleteWithUndo` cancels/silences the alarm, deletes it and shows an "Alarm deleted · UNDO" snackbar (short duration); Undo re-inserts the same alarm (same id, so it goes to the end of the stored list). The editor's Delete button is unchanged.
+
 ## 6. Known limits and honest caveats
 - `assets/th_holidays.json` was **compiled by hand, not from an official source**; entries marked `provisional` (2027 lunar/substitute days) are estimates. Refresh yearly (README reminder). Only Thailand has a built-in list; other countries rely on the phone's holiday calendar or custom days.
   To add a country: `assets/holidays_xx.json` in the same format, from an official source.

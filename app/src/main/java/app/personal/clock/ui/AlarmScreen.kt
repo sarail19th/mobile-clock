@@ -37,6 +37,19 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.launch
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -94,6 +107,25 @@ fun AlarmScreen(onSettings: () -> Unit) {
         alarms = store.alarms()
         AlarmScheduler.rescheduleAll(ctx)
         version++
+    }
+
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    // Swipe-to-delete: the alarm goes at once; a copy is kept so the Undo bar can bring it back exactly as it was.
+    fun deleteWithUndo(id: Int) {
+        val gone = store.alarm(id) ?: return
+        AlarmScheduler.cancel(ctx, id)
+        AlarmScheduler.silence(ctx, id)
+        store.deleteAlarm(id)
+        refresh()
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            val r = snackbar.showSnackbar("Alarm deleted", actionLabel = "UNDO", duration = SnackbarDuration.Short)
+            if (r == SnackbarResult.ActionPerformed) {
+                store.upsertAlarm(gone)
+                refresh()
+            }
+        }
     }
 
     val next = remember(tick, version) { AlarmScheduler.nextOverall(ctx) }
@@ -177,6 +209,7 @@ fun AlarmScreen(onSettings: () -> Unit) {
                         items(members, key = { it.id }) { a ->
                             // A pending snooze: shown on the row, with the switch on, so switching off cancels it (even for a one-shot alarm).
                             val snoozedAt = remember(snoozeTick, version) { store.snoozeUntil(a.id).takeIf { it > System.currentTimeMillis() } ?: 0L }
+                            SwipeToDeleteBox(onDelete = { deleteWithUndo(a.id) }) {
                             AlarmRow(
                                 a, is24, snoozedAt, zone,
                                 onToggle = { on ->
@@ -186,11 +219,16 @@ fun AlarmScreen(onSettings: () -> Unit) {
                                 },
                                 onClick = { editing = a },
                             )
+                            }
                         }
                     }
                 }
             }
         }
+        SnackbarHost(
+            snackbar,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 96.dp),
+        )
         ExtendedFloatingActionButton(
             onClick = {
                 val s = store.settings()
@@ -230,6 +268,37 @@ fun AlarmScreen(onSettings: () -> Unit) {
             )
         }
     }
+}
+
+/** Swipe an alarm row to the left to delete it (the red area shows a bin); the caller offers Undo. Swiping right does nothing. */
+@Composable
+private fun SwipeToDeleteBox(onDelete: () -> Unit, content: @Composable () -> Unit) {
+    val latestDelete by rememberUpdatedState(onDelete)
+    val state = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                latestDelete()
+                true
+            } else {
+                false
+            }
+        },
+    )
+    SwipeToDismissBox(
+        state = state,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            Box(
+                Modifier.fillMaxSize()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .padding(end = 24.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onErrorContainer)
+            }
+        },
+    ) { content() }
 }
 
 @Composable
