@@ -169,9 +169,8 @@ fun SettingsScreen(onBack: () -> Unit) {
             SettingsRow(PAGE_TITLES[6], "Version and licences") { page = 6 }
         }
 
-        if (page == 0) SettingsCard(null) {
-            TimeZoneAndHolidays(settings, refresh, onSave = ::save, onGrant = { permLauncher.launch(Manifest.permission.READ_CALENDAR) })
-        }
+        // This page draws its own cards (a summary plus one card per topic).
+        if (page == 0) TimeZoneAndHolidays(settings, refresh, onSave = ::save, onGrant = { permLauncher.launch(Manifest.permission.READ_CALENDAR) })
 
         if (page == 1) SettingsCard(null) {
             LabeledRow("Show seconds in the app's Clock tab") {
